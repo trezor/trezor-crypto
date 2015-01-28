@@ -1134,6 +1134,35 @@ START_TEST(test_ecdsa_der)
 }
 END_TEST
 
+START_TEST(test_curve_point_add)
+{
+	curve_point infinity;
+	point_set_infinity(&infinity);
+	curve_point not_infinity = G256k1;;
+
+	/* just to make sure we're not starting with broken values */
+	ck_assert(point_is_infinity(&infinity));
+	ck_assert(!point_is_infinity(&not_infinity));
+
+	/* now the actual substantive tests; here the second arg is infinite */
+	point_add(&not_infinity, &infinity);
+	ck_assert(point_is_infinity(&infinity));
+	ck_assert(! point_is_infinity(&not_infinity));
+
+	/* repeat with first rather than second arg as infinite */
+	point_set_infinity(&infinity);
+	not_infinity = G256k1;;
+	ck_assert(point_is_infinity(&infinity));
+	ck_assert(!point_is_infinity(&not_infinity));
+
+	point_add(&infinity, &not_infinity);
+	// now both should be infinite, the first because it started as such, the
+	// second as a result of the addition:
+	ck_assert(point_is_infinity(&infinity));
+	ck_assert(point_is_infinity(&not_infinity));
+}
+END_TEST
+
 
 // define test suite and cases
 Suite *test_suite(void)
@@ -1192,6 +1221,10 @@ Suite *test_suite(void)
 
 	tc = tcase_create("pubkey_validity");
 	tcase_add_test(tc, test_pubkey_validity);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("curve_point");
+	tcase_add_test(tc, test_curve_point_add);
 	suite_add_tcase(s, tc);
 
 	return s;

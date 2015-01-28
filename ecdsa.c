@@ -48,10 +48,10 @@ void point_add(const curve_point *cp1, curve_point *cp2)
 	bignum256 lambda, inv, xr, yr;
 
 	if (point_is_infinity(cp1)) {
+		point_copy(cp1, cp2);
 		return;
 	}
 	if (point_is_infinity(cp2)) {
-		point_copy(cp1, cp2);
 		return;
 	}
 	if (point_is_equal(cp1, cp2)) {
