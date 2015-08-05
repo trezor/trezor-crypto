@@ -330,3 +330,7 @@ def test_sign(curve, r):
     assert binascii.hexlify(sig) == binascii.hexlify(sig_ref)
 
     assert vk.verify_digest(sig, digest, sigdecode)
+
+def test_validate_pubkey(curve, r):
+    p = r.randpoint(curve)
+    assert lib.ecdsa_validate_pubkey(curve.ptr, to_POINT(p))
