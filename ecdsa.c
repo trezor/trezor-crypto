@@ -865,7 +865,7 @@ int ecdsa_read_pubkey(const ecdsa_curve *curve, const uint8_t *pub_key, curve_po
 
 int ecdsa_validate_pubkey(const ecdsa_curve *curve, const curve_point *pub)
 {
-	bignum256 y_2, x_3_b;
+	bignum256 y_2, x_3_ax_b;
 
 	if (point_is_infinity(pub)) {
 		return 0;
@@ -876,18 +876,18 @@ int ecdsa_validate_pubkey(const ecdsa_curve *curve, const curve_point *pub)
 	}
 
 	memcpy(&y_2, &(pub->y), sizeof(bignum256));
-	memcpy(&x_3_b, &(pub->x), sizeof(bignum256));
+	memcpy(&x_3_ax_b, &(pub->x), sizeof(bignum256));
 
 	// y^2
 	bn_multiply(&(pub->y), &y_2, &curve->prime);
 	bn_mod(&y_2, &curve->prime);
 
-	// x^3 + b
-	bn_multiply(&(pub->x), &x_3_b, &curve->prime);
-	bn_multiply(&(pub->x), &x_3_b, &curve->prime);
-	bn_addmodi(&x_3_b, 7, &curve->prime);
+	bn_multiply(&(pub->x), &x_3_ax_b, &curve->prime); // x^2
+	bn_addmod(&x_3_ax_b, &curve->a, &curve->prime);   // x^2 + a
+	bn_multiply(&(pub->x), &x_3_ax_b, &curve->prime); // x^3 + ax
+	bn_addmod(&x_3_ax_b, &curve->b, &curve->prime);   // x^3 + ax + b
 
-	if (!bn_is_equal(&x_3_b, &y_2)) {
+	if (!bn_is_equal(&x_3_ax_b, &y_2)) {
 		return 0;
 	}
 
