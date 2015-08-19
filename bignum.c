@@ -763,13 +763,6 @@ void bn_addi(bignum256 *a, uint32_t b) {
 	}
 }
 
-void bn_subi(bignum256 *a, uint32_t b, const bignum256 *prime) {
-	assert (b <= prime->val[0]);
-	// the possible underflow will be taken care of when adding the prime
-	a->val[0] -= b;
-	bn_add(a, prime);
-}
-
 // res = a - b mod prime.  More exactly res = a + (2*prime - b).
 // b must be a partly reduced number
 // result is normalized but not reduced.

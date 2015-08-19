@@ -79,8 +79,6 @@ void bn_addmod(bignum256 *a, const bignum256 *b, const bignum256 *prime);
 
 void bn_addi(bignum256 *a, uint32_t b);
 
-void bn_subi(bignum256 *a, uint32_t b, const bignum256 *prime);
-
 void bn_subtractmod(const bignum256 *a, const bignum256 *b, bignum256 *res, const bignum256 *prime);
 
 void bn_subtract(const bignum256 *a, const bignum256 *b, bignum256 *res);
