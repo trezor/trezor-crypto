@@ -2553,6 +2553,29 @@ START_TEST(test_bip32_ecdh_curve25519) {
 }
 END_TEST
 
+START_TEST(test_bip32_ecdh_errors) {
+	HDNode node;
+	const uint8_t peer_public_key[65] = {0};  // invalid public key
+	uint8_t session_key[65];
+	int res, key_size = 0;
+
+	test_bip32_ecdh_init_node(&node, "Seed", ED25519_NAME);
+	res = hdnode_get_shared_key(&node, peer_public_key, session_key, &key_size);
+	ck_assert_int_eq(res, 1);
+	ck_assert_int_eq(key_size, 0);
+
+	test_bip32_ecdh_init_node(&node, "Seed", CURVE25519_NAME);
+	res = hdnode_get_shared_key(&node, peer_public_key, session_key, &key_size);
+	ck_assert_int_eq(res, 1);
+	ck_assert_int_eq(key_size, 0);
+
+	test_bip32_ecdh_init_node(&node, "Seed", NIST256P1_NAME);
+	res = hdnode_get_shared_key(&node, peer_public_key, session_key, &key_size);
+	ck_assert_int_eq(res, 1);
+	ck_assert_int_eq(key_size, 0);
+}
+END_TEST
+
 START_TEST(test_output_script) {
 	static const char *vectors[] = {
 		"76A914010966776006953D5567439E5E39F86A0D273BEE88AC", "16UwLL9Risc3QfPqBUvKofHmBQ7wMtjvM",
@@ -2721,6 +2744,7 @@ Suite *test_suite(void)
 	tc = tcase_create("bip32-ecdh");
 	tcase_add_test(tc, test_bip32_ecdh_nist256p1);
 	tcase_add_test(tc, test_bip32_ecdh_curve25519);
+	tcase_add_test(tc, test_bip32_ecdh_errors);
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("ecdsa");
