@@ -444,15 +444,18 @@ int hdnode_sign(HDNode *node, const uint8_t *msg, uint32_t msg_len, uint8_t *sig
 	}
 }
 
-int hdnode_sign_digest(HDNode *node, const uint8_t *digest, uint8_t *sig, uint8_t *pby, int (*is_canonical)(uint8_t by, uint8_t sig[64]))
+int hdnode_sign_digest(HDNode *node, const uint8_t *digest, int digest_size, uint8_t *sig, uint8_t *pby, int (*is_canonical)(uint8_t by, uint8_t sig[64]))
 {
 	if (node->curve == &ed25519_info) {
 		hdnode_fill_public_key(node);
-		ed25519_sign(digest, 32, node->private_key, node->public_key + 1, sig);
+		ed25519_sign(digest, digest_size, node->private_key, node->public_key + 1, sig);
 		return 0;
 	} else if (node->curve == &curve25519_info) {
 		return 1;  // signatures are not supported
 	} else {
+		if (digest_size != 32) {
+			return 1;  // only 256-bit digests are supported for NIST256 signatures
+		}
 		return ecdsa_sign_digest(node->curve->params, node->private_key, digest, sig, pby, is_canonical);
 	}
 }
