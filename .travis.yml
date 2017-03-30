@@ -1,5 +1,8 @@
-sudo: false
+sudo: required
 language: c
+
+services:
+  - docker
 
 addons:
   apt:
@@ -11,6 +14,7 @@ addons:
     - cmake-data
     - libssl-dev
     - python-pip
+    - nodejs
 
 install:
   - pip install --user pytest ecdsa curve25519-donna
@@ -23,3 +27,4 @@ script:
   - mkdir _build && cd _build
   - cmake ..
   - make
+  - cd .. && cd emscripten && rm trezor-crypto.js && make docker-build && make test-correctness
