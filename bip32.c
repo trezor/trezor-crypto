@@ -502,6 +502,11 @@ int hdnode_serialize_public(const HDNode *node, uint32_t fingerprint, char *str,
 	return hdnode_serialize(node, fingerprint, 0x0488B21E, 1, str, strsize);
 }
 
+int hdnode_serialize_public_version(const HDNode *node, uint32_t fingerprint, uint32_t version, char *str, int strsize)
+{
+	return hdnode_serialize(node, fingerprint, version, 1, str, strsize);
+}
+
 int hdnode_serialize_private(const HDNode *node, uint32_t fingerprint, char *str, int strsize)
 {
 	return hdnode_serialize(node, fingerprint, 0x0488ADE4, 0, str, strsize);

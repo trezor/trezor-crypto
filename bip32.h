@@ -81,6 +81,8 @@ int hdnode_get_shared_key(const HDNode *node, const uint8_t *peer_public_key, ui
 
 int hdnode_serialize_public(const HDNode *node, uint32_t fingerprint, char *str, int strsize);
 
+int hdnode_serialize_public_version(const HDNode *node, uint32_t fingerprint, uint32_t version, char *str, int strsize);
+
 int hdnode_serialize_private(const HDNode *node, uint32_t fingerprint, char *str, int strsize);
 
 int hdnode_deserialize(const char *str, HDNode *node, uint32_t *fingerprint);
