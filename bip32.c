@@ -184,7 +184,7 @@ int hdnode_private_ckd(HDNode *inout, uint32_t i)
 					failed = true;
 				}
 			}
-			
+
 			if (!failed) {
 				bn_write_be(&b, inout->private_key);
 				break;
@@ -197,7 +197,7 @@ int hdnode_private_ckd(HDNode *inout, uint32_t i)
 	} else {
 		memcpy(inout->private_key, I, 32);
 	}
-		
+
 	memcpy(inout->chain_code, I + 32, 32);
 	inout->depth++;
 	inout->child_num = i;
@@ -242,7 +242,7 @@ int hdnode_public_ckd_cp(const ecdsa_curve *curve, const curve_point *parent, co
 				return 1;
 			}
 		}
-		
+
 		data[0] = 1;
 		memcpy(data + 1, I + 32, 32);
 	}
@@ -497,9 +497,9 @@ int hdnode_serialize(const HDNode *node, uint32_t fingerprint, uint32_t version,
 	return ret;
 }
 
-int hdnode_serialize_public(const HDNode *node, uint32_t fingerprint, char *str, int strsize)
+int hdnode_serialize_public(const HDNode *node, uint32_t fingerprint, char *str, int strsize, uint32_t version)
 {
-	return hdnode_serialize(node, fingerprint, 0x0488B21E, 1, str, strsize);
+	return hdnode_serialize(node, fingerprint, version, 1, str, strsize);
 }
 
 int hdnode_serialize_private(const HDNode *node, uint32_t fingerprint, char *str, int strsize)

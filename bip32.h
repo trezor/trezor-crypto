@@ -79,7 +79,7 @@ int hdnode_sign_digest(HDNode *node, const uint8_t *digest, uint8_t *sig, uint8_
 
 int hdnode_get_shared_key(const HDNode *node, const uint8_t *peer_public_key, uint8_t *session_key, int *result_size);
 
-int hdnode_serialize_public(const HDNode *node, uint32_t fingerprint, char *str, int strsize);
+int hdnode_serialize_public(const HDNode *node, uint32_t fingerprint, char *str, int strsize, uint32_t version);
 
 int hdnode_serialize_private(const HDNode *node, uint32_t fingerprint, char *str, int strsize);
 
