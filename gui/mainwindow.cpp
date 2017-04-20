@@ -58,7 +58,7 @@ void MainWindow::on_spinAccount_valueChanged(int arg1)
         hdnode_private_ckd(&node, 0 | 0x80000000); // bitcoin
         hdnode_private_ckd(&node, (arg1 - 1) | 0x80000000);
         fingerprint = hdnode_fingerprint(&node);
-        hdnode_serialize_private(&node, fingerprint, buf, buflen); QString xprv = QString(buf); ui->lineXprv->setText(xprv);
+        hdnode_serialize_private(&node, fingerprint, buf, buflen, 0x0488ADE4); QString xprv = QString(buf); ui->lineXprv->setText(xprv);
         hdnode_serialize_public(&node, fingerprint, buf, buflen, 0x0488b21e); QString xpub = QString(buf); ui->lineXpub->setText(xpub);
         hdnode_private_ckd(&node, chain); // external / internal
         for (int i = 0; i < 100; i++) {
