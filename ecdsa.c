@@ -112,7 +112,7 @@ void point_double(const ecdsa_curve *curve, curve_point *cp)
 	xr = cp->x;
 	bn_multiply(&xr, &xr, &curve->prime);
 	bn_mult_k(&xr, 3, &curve->prime);
-	bn_subi(&xr, -curve->a, &curve->prime);
+	bn_addi(&xr, curve->a);
 	bn_multiply(&xr, &lambda, &curve->prime);
 
 	// xr = lambda^2 - 2*x
@@ -932,7 +932,7 @@ void uncompress_coords(const ecdsa_curve *curve, uint8_t odd, const bignum256 *x
 	// y^2 = x^3 + a*x + b
 	memcpy(y, x, sizeof(bignum256));         // y is x
 	bn_multiply(x, y, &curve->prime);        // y is x^2
-	bn_subi(y, -curve->a, &curve->prime);    // y is x^2 + a
+	bn_addi(y, curve->a);                    // y is x^2 + a
 	bn_multiply(x, y, &curve->prime);        // y is x^3 + ax
 	bn_add(y, &curve->b);                    // y is x^3 + ax + b
 	bn_sqrt(y, &curve->prime);               // y = sqrt(y)
@@ -986,7 +986,7 @@ int ecdsa_validate_pubkey(const ecdsa_curve *curve, const curve_point *pub)
 
 	// x^3 + ax + b
 	bn_multiply(&(pub->x), &x3_ax_b, &curve->prime);  // x^2
-	bn_subi(&x3_ax_b, -curve->a, &curve->prime);      // x^2 + a
+	bn_addi(&x3_ax_b, curve->a);                      // x^2 + a
 	bn_multiply(&(pub->x), &x3_ax_b, &curve->prime);  // x^3 + ax
 	bn_addmod(&x3_ax_b, &curve->b, &curve->prime);    // x^3 + ax + b
 	bn_mod(&x3_ax_b, &curve->prime);
