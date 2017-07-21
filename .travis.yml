@@ -37,10 +37,8 @@ matrix:
       sudo: required
       install: true
       compiler: true
-      addons:
-        apt:
-          packages:
-            - nodejs
+      node_js:
+        - "8"
 
 notifications:
   webhooks:
