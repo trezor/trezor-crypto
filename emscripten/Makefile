@@ -1,9 +1,9 @@
 EMFLAGS = \
 	-Os --closure 1 \
-	--memory-init-file 0 \
 	--pre-js pre.js --post-js post.js \
 	-I ../ed25519-donna \
-	-s EXPORTED_FUNCTIONS='["_hdnode_public_ckd_address_optimized", "_ecdsa_read_pubkey"]'
+	-s EXPORTED_FUNCTIONS='["_hdnode_public_ckd_address_optimized", "_ecdsa_read_pubkey"]' \
+	-s WASM=1
 
 SRC = ../bignum.c ../ecdsa.c ../secp256k1.c ../hmac.c ../bip32.c \
 	../base58.c ../ripemd160.c ../sha2.c ../rand.c ../address.c

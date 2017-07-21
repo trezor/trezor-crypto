@@ -9,107 +9,140 @@
  } HDNode;
  */
 
-var HEAPU8 = Module['HEAPU8'];
-var _malloc = Module['_malloc'];
-var _hdnode_public_ckd_address_optimized = Module['_hdnode_public_ckd_address_optimized'];
-var _ecdsa_read_pubkey = Module['_ecdsa_read_pubkey'];
-var Pointer_stringify = Module['Pointer_stringify'];
+var readyResolve = null
+var readyPromise = new Promise(function(resolve) {
+    readyResolve = resolve;
+});
 
-// HDNode structs global
-var PUBPOINT_SIZE = 2 * 9 * 4; // (2 * bignum256 (= 9 * uint32_t))
-var _pubpoint = _malloc(PUBPOINT_SIZE);
-var PUBKEY_SIZE = 33;
-var _pubkey = _malloc(PUBKEY_SIZE);
-var CHAINCODE_SIZE = 32;
-var _chaincode = _malloc(CHAINCODE_SIZE);
+Module['onRuntimeInitialized'] = function() {
+    var HEAPU8 = Module['HEAPU8'];
 
-// address string global
-var ADDRESS_SIZE = 60; // maximum size
-var _address = _malloc(ADDRESS_SIZE);
+    var _malloc = Module['_malloc'];
+    var _hdnode_public_ckd_address_optimized = Module['_hdnode_public_ckd_address_optimized'];
+    var _ecdsa_read_pubkey = Module['_ecdsa_read_pubkey'];
+    var Pointer_stringify = Module['Pointer_stringify'];
 
-/*
- * public library interface
- */
+    // HDNode structs global
+    var PUBPOINT_SIZE = 2 * 9 * 4; // (2 * bignum256 (= 9 * uint32_t))
+    var _pubpoint = _malloc(PUBPOINT_SIZE);
+    var PUBKEY_SIZE = 33;
+    var _pubkey = _malloc(PUBKEY_SIZE);
+    var CHAINCODE_SIZE = 32;
+    var _chaincode = _malloc(CHAINCODE_SIZE);
 
-/**
- * @param {HDNode} node  HDNode struct, see the definition above
- */
-function serializeNode(node) {
-    var u8_pubkey = new Uint8Array(33);
-    u8_pubkey.set(node['public_key'], 0);
-    HEAPU8.set(u8_pubkey, _pubkey);
+    // address string global
+    var ADDRESS_SIZE = 60; // maximum size
+    var _address = _malloc(ADDRESS_SIZE);
 
-    var u8_chaincode = new Uint8Array(32);
-    u8_chaincode.set(node['chain_code'], 0);
-    HEAPU8.set(u8_chaincode, _chaincode);
+    /*
+    * public library interface
+    */
 
-    _ecdsa_read_pubkey(0, _pubkey, _pubpoint);
-}
+    /**
+    * @param {HDNode} node  HDNode struct, see the definition above
+    */
+    function serializeNode(node) {
+        var u8_pubkey = new Uint8Array(33);
+        u8_pubkey.set(node['public_key'], 0);
+        HEAPU8.set(u8_pubkey, _pubkey);
 
-/**
- * @param {Number} index    BIP32 index of the address
- * @param {Number} version  address version byte
- * @return {String}
- */
-function deriveAddress(index, version, segwit) {
-    _hdnode_public_ckd_address_optimized(_pubpoint, _chaincode, index, version, _address, ADDRESS_SIZE, segwit);
-    return Pointer_stringify(_address);
-}
+        var u8_chaincode = new Uint8Array(32);
+        u8_chaincode.set(node['chain_code'], 0);
+        HEAPU8.set(u8_chaincode, _chaincode);
 
-/**
- * @param {HDNode} node        HDNode struct, see the definition above
- * @param {Number} firstIndex  index of the first address
- * @param {Number} lastIndex   index of the last address
- * @param {Number} version     address version byte
- * @return {Array<String>}
- */
-function deriveAddressRange(node, firstIndex, lastIndex, version, segwit) {
-    var addresses = [];
-    serializeNode(node);
-    var i;
-    for (i = firstIndex; i <= lastIndex; i++) {
-        addresses.push(deriveAddress(i, version, segwit));
+        _ecdsa_read_pubkey(0, _pubkey, _pubpoint);
     }
-    return addresses;
-}
 
-if (typeof module !== 'undefined') {
-    module['exports'] = {
+    /**
+    * @param {Number} index    BIP32 index of the address
+    * @param {Number} version  address version byte
+    * @return {String}
+    */
+    function deriveAddress(index, version, segwit) {
+        _hdnode_public_ckd_address_optimized(_pubpoint, _chaincode, index, version, _address, ADDRESS_SIZE, segwit);
+        return Pointer_stringify(_address);
+    }
+
+    /**
+    * @param {HDNode} node        HDNode struct, see the definition above
+    * @param {Number} firstIndex  index of the first address
+    * @param {Number} lastIndex   index of the last address
+    * @param {Number} version     address version byte
+    * @return {Array<String>}
+    */
+    function deriveAddressRange(node, firstIndex, lastIndex, version, segwit) {
+        var addresses = [];
+        serializeNode(node);
+        var i;
+        for (i = firstIndex; i <= lastIndex; i++) {
+            addresses.push(deriveAddress(i, version, segwit));
+        }
+        return addresses;
+    }
+
+    /*
+    * Web worker processing
+    */
+
+    function processMessage(event) {
+        var data = event['data'];
+        var type = data['type'];
+
+        switch (type) {
+        case 'deriveAddressRange':
+            var addresses = deriveAddressRange(
+                data['node'],
+                data['firstIndex'],
+                data['lastIndex'],
+                data['version'],
+                !!data['segwit']
+            );
+            self.postMessage({
+                'addresses': addresses,
+                'firstIndex': data['firstIndex'],
+                'lastIndex': data['lastIndex']
+            });
+            break;
+
+        default:
+            throw new Error('Unknown message type: ' + type);
+        }
+    }
+    readyResolve({
+        'processMessage': processMessage,
         'serializeNode': serializeNode,
         'deriveAddress': deriveAddress,
-        'deriveAddressRange': deriveAddressRange
-    };
-}
-
-/*
- * Web worker processing
- */
-
-function processMessage(event) {
-    var data = event['data'];
-    var type = data['type'];
-
-    switch (type) {
-    case 'deriveAddressRange':
-        var addresses = deriveAddressRange(
-            data['node'],
-            data['firstIndex'],
-            data['lastIndex'],
-            data['version'],
-            !!data['segwit']
-        );
-        self.postMessage({
-            'addresses': addresses,
-            'firstIndex': data['firstIndex'],
-            'lastIndex': data['lastIndex']
-        });
-        break;
-
-    default:
-        throw new Error('Unknown message type: ' + type);
-    }
+        'deriveAddressRange': deriveAddressRange,
+    });
 }
 
 if (ENVIRONMENT_IS_WORKER) {
-    self.onmessage = processMessage;
+    self.onmessage = function(event) {
+        readyPromise.then(function (result) {
+            result['processMessage'](event);
+        });
+    };
+}
+
+if (typeof module !== 'undefined') {
+    var readyResult = null;
+    var readyPromiseSet = readyPromise.then(function (ready) {
+        readyResult = ready;
+    });
+
+    function wrapExport(name) {
+        return function () {
+            if (readyResult === null) {
+                throw new Error('trezor-crypto not yet inited.');
+            } else {
+                return readyResult[name].apply(undefined, arguments);
+            }
+        }
+    }
+    module['exports'] = {
+        'serializeNode': wrapExport('serializeNode'),
+        'deriveAddress': wrapExport('deriveAddress'),
+        'deriveAddressRange': wrapExport('deriveAddressRange'),
+        'ready': readyPromiseSet
+    }
 }
