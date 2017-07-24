@@ -1,7 +1,10 @@
 var crypto = require('./trezor-crypto');
 var bitcoin = require('bitcoinjs-lib');
 
-crypto.ready.then(function () {
+var wasmBinaryFile = 'trezor-crypto.wasm';
+var fs = require('fs');
+var file = fs.readFileSync(wasmBinaryFile);
+crypto.init(file).then(() => {
     var XPUB =
         'xpub6CVKsQYXc9awxgV1tWbG4foDvdcnieK2JkbpPEBKB5WwAPKBZ1mstLbKVB4ov7QzxzjaxNK6EfmNY5Jsk2cG26EVcEkycGW4tchT2dyUhrx';
     var node = bitcoin.HDNode.fromBase58(XPUB).derive(0);

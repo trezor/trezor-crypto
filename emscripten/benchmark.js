@@ -17,25 +17,47 @@ var nodeStruct = {
 var suite;
 var worker;
 
-if (typeof Worker !== 'undefined') {
-    console.log('enabling web worker benchmark');
-    worker = new Worker('./trezor-crypto.js');
-    worker.onerror = function (error) {
-        console.error('worker:', error);
-    };
-    suite = [
-        // benchBitcoinJS,
-        // benchBrowserify,
-        benchWorker
-    ];
-} else {
-    suite = [
-        benchBitcoinJS,
-        benchBrowserify
-    ];
-}
+var wasmBinaryFile = 'trezor-crypto.wasm';
 
-benchmark(suite, 1000, 1000);
+if (typeof Worker !== 'undefined') {
+    var promise = fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
+        if (!response['ok']) {
+            throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
+        }
+        return response['arrayBuffer']();
+    });
+
+    promise.then(binary => {
+        crypto.init(binary).then(() => {
+            worker = new Worker('./trezor-crypto.js');
+            worker.onerror = function (error) {
+                console.error('worker:', error);
+            };
+            worker.postMessage({
+                type: 'init',
+                binary
+            });
+
+            suite = [
+                benchBitcoinJS,
+                benchBrowserify,
+                benchWorker
+            ];
+            benchmark(suite, 1000, 1000);
+        });
+    });
+
+} else {
+    var fs = require('fs');
+    var file = fs.readFileSync(wasmBinaryFile);
+    crypto.init(file).then(() => {
+        suite = [
+            benchBitcoinJS,
+            benchBrowserify
+        ];
+        benchmark(suite, 1000, 1000);
+    });
+}
 
 function benchmark(suite, delay, ops) {
     (function cycle(i) {
@@ -73,8 +95,8 @@ function benchWorker(ops, fn) {
     worker.postMessage({
         type: 'deriveAddressRange',
         node: nodeStruct,
-        from: 0,
-        to: ops - 1,
+        firstIndex: 0,
+        lastIndex: ops - 1,
         version: 0
     });
 }
