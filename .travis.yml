@@ -31,16 +31,14 @@ matrix:
   include:
     - env: BUILD=emscripten
       script:
-        - cd emscripten && rm trezor-crypto.js && make docker-build && make test-correctness && cd ..
+        - cd emscripten && rm trezor-crypto.js && make docker-build && nvm install 8 && nvm use 8 && make test-correctness && cd ..
       services:
         - docker
       sudo: required
       install: true
       compiler: true
-      addons:
-        apt:
-          packages:
-            - nodejs
+      node_js:
+        - "8"
 
 notifications:
   webhooks:
