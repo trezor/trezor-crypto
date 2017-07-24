@@ -1,8 +1,9 @@
 EMFLAGS = \
-	-Os --closure 1 \
+	-Oz --closure 1 \
 	--pre-js pre.js --post-js post.js \
 	-I ../ed25519-donna \
 	-s EXPORTED_FUNCTIONS='["_hdnode_public_ckd_address_optimized", "_ecdsa_read_pubkey"]' \
+	-s NO_EXIT_RUNTIME=1 \
 	-s WASM=1
 
 SRC = ../bignum.c ../ecdsa.c ../secp256k1.c ../hmac.c ../bip32.c \
