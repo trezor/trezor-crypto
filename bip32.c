@@ -48,6 +48,10 @@
 #include "nem.h"
 #endif
 
+#if USE_DECRED
+#include "decred.h"
+#endif
+
 const curve_info ed25519_info = {
 	.bip32_name = "ed25519 seed",
 	.params = NULL,

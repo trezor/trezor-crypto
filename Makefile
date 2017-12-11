@@ -30,6 +30,7 @@ CFLAGS += -Ied25519-donna
 CFLAGS += -DUSE_ETHEREUM=1
 CFLAGS += -DUSE_GRAPHENE=1
 CFLAGS += -DUSE_NEM=1
+CFLAGS += -DUSE_DECRED=1
 
 # disable certain optimizations and features when small footprint is required
 ifdef SMALL
@@ -53,6 +54,7 @@ SRCS  += chacha20poly1305/chacha20poly1305.c chacha20poly1305/chacha_merged.c ch
 SRCS  += rc4.c
 SRCS  += nem.c
 SRCS  += segwit_addr.c
+SRCS  += decred.c
 
 OBJS   = $(SRCS:.c=.o)
 
