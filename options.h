@@ -61,6 +61,11 @@
 #define USE_ETHEREUM 0
 #endif
 
+// support Decred operations
+#ifndef USE_DECRED
+#define USE_DECRED 0
+#endif
+
 // support Graphene operations (STEEM, BitShares)
 #ifndef USE_GRAPHENE
 #define USE_GRAPHENE 0

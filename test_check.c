@@ -72,6 +72,9 @@
 #define UNMARK_SECRET_DATA(addr, len) VALGRIND_MAKE_MEM_DEFINED  (addr, len)
 
 #define FROMHEX_MAXLEN 512
+#ifdef USE_DECRED
+#include "decred.h"
+#endif
 
 #define VERSION_PUBLIC  0x0488b21e
 #define VERSION_PRIVATE 0x0488ade4
@@ -4175,6 +4178,8 @@ START_TEST(test_multibyte_address)
 }
 END_TEST
 
+
+
 // https://tools.ietf.org/html/rfc6229#section-2
 START_TEST(test_rc4_rfc6229)
 {
@@ -4386,6 +4391,124 @@ START_TEST(test_rc4_rfc6229)
 }
 END_TEST
 
+#if USE_DECRED
+
+START_TEST(decred_test_address)
+{
+	HDNode node;
+	char address[MAX_ADDR_SIZE];
+
+	// P2PKH
+	uint32_t address_type = 1855;
+
+	hdnode_from_seed(fromhex("58ae6820d05b3206019ac5c511d278d2b91d0143a6691bd07c1e3d0eb5215775"), 32, SECP256K1_NAME, &node);
+	hdnode_fill_public_key(&node);
+	ecdsa_get_address(node.public_key, address_type, HASHER_BLAKE, address, MAX_ADDR_SIZE);
+	ck_assert_str_eq(address, "DspDtjHb9aMymZzZjheNUjoPax3eWtrqaQf");
+}
+END_TEST
+
+
+#define DECRED_VERSION_PUBLIC 0x02fda926
+#define DECRED_VERSION_PRIVATE 0x02fda4e8
+
+
+
+
+START_TEST(test_decred_pgpwordlist)
+{
+
+	static const char *vectors[] = {
+		"E58294F2E9A227486E8B061B31CC528FD7FA3F19",
+		"topmost Istanbul Pluto vagabond treadmill Pacific brackish dictator goldfish Medusa afflict bravado chatter revolver Dupont midsummer stopwatch whimsical cowbell bottomless",
+		"topmost Istanbul Pluto vagabond treadmill Pacific brackish dictator goldfish Medusa afflict bravado chatter revolver Dupont midsummer stopwatch whimsical cowbell bottomless",
+		"00",
+
+		"D1D464C004F00FB5C9A4C8D8E433E7FB7FF56256",
+		"stairway souvenir flytrap recipe adrift upcoming artist positive spearhead Pandora spaniel stupendous tonic concurrent transit Wichita lockup visitor flagpole escapade",
+		"stairway souvenir flytrap recipe adrift upcoming artist positive spearhead Pandora spaniel stupendous tonic concurrent transit Wichita lockup visitor flagpole escapade",
+		"00",
+
+		"aca149994b9c02e4a3c8d57e706895df06742ee097c29c43bafc64bbf5b99b9a",
+		"   ribcage  outfielder DECKHAND     nebula dragnet   october accrue tradition ReFoRm   retrieval sterling insurgent guidance gravity preclude therapist afflict hydraulic buzzard tobacco preshrunk repellent python decimal shadow Wilmington flytrap publisher vapor proximate puppy newsletter   ",
+		"ribcage outfielder deckhand nebula dragnet October accrue tradition reform retrieval sterling insurgent guidance gravity preclude therapist afflict hydraulic buzzard tobacco preshrunk repellent python decimal shadow Wilmington flytrap publisher vapor proximate puppy newsletter",
+		"00",
+
+		"aca149994b9c02e4a3c8d57e706895df06742ee097c29c43bafc64bbf5b99b9a",
+		"   ribcage  INVALIDWORD DECKHAND     nebula dragnet   october accrue tradition ReFoRm   retrieval sterling insurgent guidance gravity preclude therapist afflict hydraulic buzzard tobacco preshrunk repellent python decimal shadow Wilmington flytrap publisher vapor proximate puppy newsletter   ",
+		"ribcage outfielder deckhand nebula dragnet October accrue tradition reform retrieval sterling insurgent guidance gravity preclude therapist afflict hydraulic buzzard tobacco preshrunk repellent python decimal shadow Wilmington flytrap publisher vapor proximate puppy newsletter",
+		"ffff",
+
+		0,
+		0,
+		0,
+		0,
+	};
+	uint8_t seed_output_1[MAX_SEED_LENGTH], seed_output_2[MAX_SEED_LENGTH];
+	int retval_2;
+	const char **seed, **word_list_in, **word_list_out, **retval_expected, *m;
+
+	seed = vectors;
+	word_list_in = vectors + 1;
+	word_list_out = vectors + 2;
+	retval_expected = vectors + 3;
+
+	while(*seed && *word_list_in && *word_list_out && *retval_expected){
+		m = decred_pgp_words_from_data(fromhex(*seed), strlen(*seed)/2);
+		decred_mnemonic_to_seed(m, seed_output_1);
+		retval_2 = decred_mnemonic_to_seed(*word_list_in, seed_output_2);
+
+		ck_assert_str_eq(m, *word_list_out);
+		ck_assert_mem_eq(seed_output_1, fromhex(*seed), strlen(*seed)/2);
+
+		uint8_t r = (uint8_t)retval_2;
+		if(r == 0){
+			ck_assert_mem_eq(seed_output_2, fromhex(*seed), strlen(*seed)/2);
+		}
+		else { // invalid word in supplied mnemonic
+			ck_assert_mem_ne(seed_output_2, fromhex(*seed), strlen(*seed)/2);
+		}
+		ck_assert_int_eq(r, *(fromhex(*retval_expected)));
+
+		seed += 4;
+		word_list_in += 4;
+		word_list_out += 4;
+		retval_expected += 4;
+	}
+}
+END_TEST
+
+START_TEST(test_decred_wordlist_seed)
+{
+  const char *seed_in = "6ec70a6e996e374189a912267b331368a5d6ea57cc497bcf9a8c9bfc6a1f1770";
+  const char *wordlist = decred_seed_to_mnemonic(fromhex(seed_in), strlen(seed_in)/2);
+  ck_assert_str_eq(wordlist, "goldfish retraction allow headwaters prowler headwaters clamshell decadence nightbird passenger atlas caretaker kickoff concurrent Aztec gravity reindeer speculate Trojan Eskimo spigot dinosaur kickoff Saturday pupil megaton puppy Wilmington Geiger businessman banjo hesitate snapshot");
+}
+END_TEST
+
+START_TEST(test_decred_check_mnemonic)
+{
+  int r;
+  r = decred_check_mnemonic("goldfish retraction allow headwaters prowler headwaters clamshell decadence nightbird passenger atlas caretaker kickoff concurrent Aztec gravity reindeer speculate Trojan Eskimo spigot dinosaur kickoff Saturday pupil megaton puppy Wilmington Geiger businessman banjo hesitate snapshot");
+  ck_assert_int_eq(r, 1);
+
+  r = decred_check_mnemonic("invalidword retraction allow headwaters prowler headwaters clamshell decadence nightbird passenger atlas caretaker kickoff concurrent Aztec gravity reindeer speculate Trojan Eskimo spigot dinosaur kickoff Saturday pupil megaton puppy Wilmington Geiger businessman banjo hesitate invalid");
+  ck_assert_int_eq(r, 0);
+
+  r = decred_check_mnemonic("invalid invalid");
+  ck_assert_int_eq(r, 0);
+}
+END_TEST
+
+void mnemonic_to_seed_callback(uint32_t iter, uint32_t total)
+{
+	printf("mnemonic_to_seed %d \n", 1000 * iter / total);
+}
+
+
+#endif
+
+
 #include "test_segwit.c"
 
 // define test suite and cases
@@ -4426,7 +4549,6 @@ Suite *test_suite(void)
 	suite_add_tcase(s, tc);
 
 #if USE_GRAPHENE
-	tc = tcase_create("base58gph");
 	tcase_add_test(tc, test_base58gph);
 	suite_add_tcase(s, tc);
 #endif
@@ -4608,11 +4730,28 @@ Suite *test_suite(void)
 
 	tc = tcase_create("rc4");
 	tcase_add_test(tc, test_rc4_rfc6229);
-	suite_add_tcase(s, tc);
 
 	tc = tcase_create("segwit");
 	tcase_add_test(tc, test_segwit);
 	suite_add_tcase(s, tc);
+
+	#if USE_DECRED
+	tc = tcase_create("decred_pgpwordlist");
+	tcase_add_test(tc, test_decred_pgpwordlist);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("decred_wordlist_seed");
+	tcase_add_test(tc, test_decred_wordlist_seed);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("decred_check_mnemonic");
+	tcase_add_test(tc, test_decred_check_mnemonic);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("decred_address");
+	tcase_add_test(tc, decred_test_address);
+	suite_add_tcase(s, tc);
+	#endif
 
 	return s;
 }
