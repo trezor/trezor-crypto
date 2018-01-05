@@ -16,7 +16,6 @@
 
 #include "ed25519-donna.h"
 #include "ed25519.h"
-
 #include "ed25519-hash-custom.h"
 
 /*
@@ -158,10 +157,28 @@ ED25519_FN(ed25519_scalarmult) (ed25519_public_key res, const ed25519_secret_key
 	return 0;
 }
 
-
 #ifndef ED25519_SUFFIX
 
+#include "ed25519-ref10.h"
+
 #include "curve25519-donna-scalarmult-base.h"
+
+void
+ed25519_seed_keypair(unsigned char *pk, unsigned char *sk, const unsigned char *seed) {
+	ge25519_p3 A;
+	hash_512bits extsk;
+
+	ed25519_hash(extsk, seed, 32);
+	extsk[0] &= 248;
+	extsk[31] &= 127;
+	extsk[31] |= 64;
+
+	ge25519_scalarmult_base(&A, extsk);
+	ge25519_p3_tobytes(pk, &A);
+
+	memmove(sk, seed, 32);
+    memmove(sk + 32, pk, 32);
+}
 
 int
 ed25519_cosi_combine_publickeys(ed25519_public_key res, CONST ed25519_public_key *pks, size_t n) {

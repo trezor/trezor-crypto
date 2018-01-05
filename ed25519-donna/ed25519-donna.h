@@ -1,3 +1,5 @@
+#ifndef ED25519_DONNA
+#define ED25519_DONNA
 /*
 	Public domain by Andrew M. <liquidsun@gmail.com>
 	Modified from the amd64-51-30k implementation by
@@ -32,6 +34,18 @@ typedef struct ge25519_p1p1_t {
 	bignum25519 x, y, z, t;
 } ge25519_p1p1;
 
+typedef struct ge25519_p2_t {
+	bignum25519 x, y, z;
+} ge25519_p2;
+
+typedef struct ge25519_p3_t {
+	bignum25519 x, y, z, t;
+} ge25519_p3;
+
+typedef struct ge25519_precomp_t {
+    bignum25519 yplusx, yminusx, xy2d;
+} ge25519_precomp;
+
 typedef struct ge25519_niels_t {
 	bignum25519 ysubx, xaddy, t2d;
 } ge25519_niels;
@@ -45,3 +59,7 @@ typedef struct ge25519_pniels_t {
 #include "ed25519-donna-32bit-tables.h"
 
 #include "ed25519-donna-impl-base.h"
+
+#include "ed25519-ref10.h"
+
+#endif // ED25519_DONNA
