@@ -21,19 +21,24 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef __RAND_H__
-#define __RAND_H__
+#include <stdio.h>
+#include "rand.h"
 
-#include <stdint.h>
-#include <stdlib.h>
+uint32_t random_uniform(uint32_t n)
+{
+	uint32_t x, max = 0xFFFFFFFF - (0xFFFFFFFF % n);
+	while ((x = random32()) >= max);
+	return x / (max / n);
+}
 
-// platform specific
-uint32_t random32(void);
-void random_buffer(uint8_t *buf, size_t len);
-int finalize_rand(void);
-
-// see rand_pure.h
-uint32_t random_uniform(uint32_t n);
-void random_permute(char *buf, size_t len);
-
-#endif
+void random_permute(char *str, size_t len)
+{
+	int i, j;
+	char t;
+	for (i = len - 1; i >= 1; i--) {
+		j = random_uniform(i + 1);
+		t = str[j];
+		str[j] = str[i];
+		str[i] = t;
+	}
+}
