@@ -19,6 +19,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include "options.h"
 
 #include "sha3.h"
 #include "macros.h"
