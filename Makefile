@@ -77,7 +77,10 @@ test_openssl: test_openssl.o $(OBJS)
 libtrezor-crypto.so: $(SRCS)
 	$(CC) $(CFLAGS) -fPIC -shared $(SRCS) -o libtrezor-crypto.so
 
-tools: tools/xpubaddrgen tools/mktable tools/bip39bruteforce
+tools: tools/xpubaddrgen tools/mktable tools/bip39bruteforce tools/my_devs
+
+tools/my_devs: tools/my_devs.o $(OBJS)
+	$(CC) tools/my_devs.o $(OBJS) -o tools/my_devs
 
 tools/xpubaddrgen: tools/xpubaddrgen.o $(OBJS)
 	$(CC) tools/xpubaddrgen.o $(OBJS) -o tools/xpubaddrgen
