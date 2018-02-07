@@ -49,44 +49,36 @@ void generate_shared_key(const char *seed_str) {
 
 
 
-int compute_sha256sum(int argc, char *argv[])
+void compute_sha256sum(const char *seed, uint8_t* digest /*size SHA256_DIGEST_LENGTH*/)
 {
-
-    unsigned int i = 0;
-    char test[256] = "";
-
-    if (argc >= 2)
-    {
-        strcpy(test, argv[1]);
-    }
-
     SHA256_CTX ctx;
-    uint8_t digest[SHA256_DIGEST_LENGTH];
     sha256_Init(&ctx);
 
-    sha256_Update(&ctx, (const uint8_t*) test, strlen(test));
+    sha256_Update(&ctx, (const uint8_t*) seed, strlen(seed));
     sha256_Final(&ctx, digest);
-
-    printf("output: \n");
-    for(i=0;i<SHA256_DIGEST_LENGTH;i++) {
-        printf("%02x", digest[i]);
-    }
-
-    printf("\n");
-
-    return 0;
 }
 
 
 int main(int argc, char *argv[]) 
 {
+    char seed[256] = "";
+
     if (argc >= 2)
     {
-        generate_shared_key(argv[1]);
+        strcpy(seed, argv[1]);
     }
-    else
-    {
-        generate_shared_key("");
+
+    generate_shared_key(seed);
+
+
+    uint8_t digest[SHA256_DIGEST_LENGTH]= {0};
+    compute_sha256sum(seed, digest);
+
+    printf("output: \n");
+    for(uint i=0;i<SHA256_DIGEST_LENGTH;i++) {
+        printf("%02x", digest[i]);
     }
-    return compute_sha256sum(argc, argv);
+    printf("\n");
+
+    return 0;
 }
