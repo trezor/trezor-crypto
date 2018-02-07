@@ -7,6 +7,8 @@
 #include "bip32.h"
 #include "curves.h"
 
+void compute_sha256sum(const char *seed, uint8_t* digest /*size SHA256_DIGEST_LENGTH*/);
+
 void generate_shared_key(const char *seed_str) {
 
     HDNode alice;
@@ -43,6 +45,16 @@ void generate_shared_key(const char *seed_str) {
     for (int i = 0; i < key_size; ++i)
     {
     printf("%02x", session_key1[i]);
+    }
+    printf("\n");
+
+
+    uint8_t digest[SHA256_DIGEST_LENGTH]= {0};
+    compute_sha256sum((const char*) session_key1, digest);
+    
+    printf("output: \n");
+    for(uint i=0;i<SHA256_DIGEST_LENGTH;i++) {
+        printf("%02x", digest[i]);
     }
     printf("\n");
 }
