@@ -9,7 +9,7 @@
 
 #include "bignum.h"
 
-void compute_sha256sum(const char *seed, uint8_t* digest /*size SHA256_DIGEST_LENGTH*/);
+void compute_sha256sum(const char *seed, uint8_t* digest /*size SHA256_DIGEST_LENGTH*/, size_t seed_lenght);
 
 void generate_shared_key(const char *seed_str) {
 
@@ -18,7 +18,7 @@ void generate_shared_key(const char *seed_str) {
 
     // shared key variables
     int res, key_size;
-    uint8_t session_key1[65];
+    uint8_t session_key1[65] = {0};
 
 
 
@@ -42,6 +42,7 @@ void generate_shared_key(const char *seed_str) {
 
     res = hdnode_get_shared_key(&alice, alice.public_key, session_key1, &key_size);
 
+
     printf("Shared key (status: %d, key_size: %d): \n", res, key_size);
     for (int i = 0; i < key_size; ++i)
     {
@@ -49,20 +50,19 @@ void generate_shared_key(const char *seed_str) {
     }
 
     bignum256 bigshared;
-#if BYTE_ORDER == LITTLE_ENDIAN
-    bn_read_le(session_key1, &bigshared);
-#elif BYTE_ORDER == BIG_ENDIAN
     bn_read_be(session_key1, &bigshared);
-#endif
     printf("\nbignum sharedkey : \n");
     bn_print(&bigshared);
+    printf("\ncurve prime : \n");
+    bn_print(&alice.curve->params->order);
 
     printf("\nbignum sharedkey after mod : \n");
     bn_fast_mod(&bigshared, &alice.curve->params->order);
     bn_print(&bigshared);
+    printf("\n");
 
     uint8_t digest[SHA256_DIGEST_LENGTH]= {0};
-    compute_sha256sum((const char*) session_key1, digest);
+    compute_sha256sum((const char*) session_key1, digest, sizeof(session_key1));
     
     printf("\nSha256 of output: \n");
     for(uint i=0;i<SHA256_DIGEST_LENGTH;i++) {
@@ -73,12 +73,13 @@ void generate_shared_key(const char *seed_str) {
 
 
 
-void compute_sha256sum(const char *seed, uint8_t* digest /*size SHA256_DIGEST_LENGTH*/)
+void compute_sha256sum(const char *seed, uint8_t* digest /*size SHA256_DIGEST_LENGTH*/, size_t seed_lenght)
 {
     SHA256_CTX ctx;
     sha256_Init(&ctx);
 
-    sha256_Update(&ctx, (const uint8_t*) seed, strlen(seed));
+    printf("Len seed: %lu\n", seed_lenght);
+    sha256_Update(&ctx, (const uint8_t*) seed, seed_lenght);
     sha256_Final(&ctx, digest);
 }
 
@@ -96,7 +97,7 @@ int main(int argc, char *argv[])
 
 
     uint8_t digest[SHA256_DIGEST_LENGTH]= {0};
-    compute_sha256sum(seed, digest);
+    compute_sha256sum(seed, digest, strlen(seed));
 
     printf("Sha256: \n");
     for(uint i=0;i<SHA256_DIGEST_LENGTH;i++) {
