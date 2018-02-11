@@ -72,6 +72,14 @@ void generate_shared_key(const char *seed_str) {
 }
 
 
+void genereate_deterministic_key_pair_seckey(const char* seed, uint8_t* seckey)
+{
+    uint8_t digest[SHA256_DIGEST_LENGTH] = {0};
+    compute_sha256sum(seed, digest, strlen(seed));
+
+    compute_sha256sum((const char * )digest, seckey, SHA256_DIGEST_LENGTH);
+}
+
 
 void compute_sha256sum(const char *seed, uint8_t* digest /*size SHA256_DIGEST_LENGTH*/, size_t seed_lenght)
 {
@@ -93,10 +101,18 @@ int main(int argc, char *argv[])
         strcpy(seed, argv[1]);
     }
 
-    generate_shared_key(seed);
+    // generate_shared_key(seed);
+    printf("Secret Key");
+    uint8_t seckey_digest[SHA256_DIGEST_LENGTH] = {0};
+    genereate_deterministic_key_pair_seckey(seed, seckey_digest);
+    printf("Seckey: \n");
+    for(uint i=0;i<SHA256_DIGEST_LENGTH;i++) {
+        printf("%02x", seckey_digest[i]);
+    }
+    printf("\n");
 
 
-    uint8_t digest[SHA256_DIGEST_LENGTH]= {0};
+    uint8_t digest[SHA256_DIGEST_LENGTH] = {0};
     compute_sha256sum(seed, digest, strlen(seed));
 
     printf("Sha256: \n");
