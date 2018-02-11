@@ -27,6 +27,7 @@ CFLAGS += -I.
 CFLAGS += -DUSE_ETHEREUM=1
 CFLAGS += -DUSE_GRAPHENE=1
 CFLAGS += -DUSE_NEM=1
+CFLAGS += -DUSE_BN_PRINT=1
 
 # disable certain optimizations and features when small footprint is required
 ifdef SMALL
@@ -54,8 +55,8 @@ SRCS  += memzero.c
 
 OBJS   = $(SRCS:.c=.o)
 
-TESTLIBS = $(shell pkg-config --libs check) -lpthread -lm
-TESTSSLLIBS = -lcrypto
+TESTLIBS = -L/usr/local/lib/ -lpthread -lm -lcheck
+TESTSSLLIBS = -lcrypto -lcheck
 
 all: test_check test_openssl test_speed aes/aestst tools libtrezor-crypto.so
 
@@ -77,7 +78,10 @@ test_openssl: test_openssl.o $(OBJS)
 libtrezor-crypto.so: $(SRCS)
 	$(CC) $(CFLAGS) -fPIC -shared $(SRCS) -o libtrezor-crypto.so
 
-tools: tools/xpubaddrgen tools/mktable tools/bip39bruteforce
+tools: tools/xpubaddrgen tools/mktable tools/bip39bruteforce tools/my_devs
+
+tools/my_devs: tools/my_devs.o $(OBJS)
+	$(CC) tools/my_devs.o $(OBJS) -o tools/my_devs
 
 tools/xpubaddrgen: tools/xpubaddrgen.o $(OBJS)
 	$(CC) tools/xpubaddrgen.o $(OBJS) -o tools/xpubaddrgen
