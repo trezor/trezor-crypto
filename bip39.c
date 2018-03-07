@@ -229,7 +229,7 @@ void mnemonic_to_seed(const char *mnemonic, const char *passphrase, uint8_t seed
 	uint8_t salt[8 + 256];
 	memcpy(salt, "mnemonic", 8);
 	memcpy(salt + 8, passphrase, passphraselen);
-	static CONFIDENTIAL PBKDF2_HMAC_SHA512_CTX pctx;
+	CONFIDENTIAL PBKDF2_HMAC_SHA512_CTX pctx;
 	pbkdf2_hmac_sha512_Init(&pctx, (const uint8_t *)mnemonic, strlen(mnemonic), salt, passphraselen + 8);
 	if (progress_callback) {
 		progress_callback(0, BIP39_PBKDF2_ROUNDS);
