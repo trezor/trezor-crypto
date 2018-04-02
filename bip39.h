@@ -25,6 +25,7 @@
 #define __BIP39_H__
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #define BIP39_PBKDF2_ROUNDS 2048
 

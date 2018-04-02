@@ -22,7 +22,6 @@
  */
 
 #include <string.h>
-#include <stdbool.h>
 
 #include "bip39.h"
 #include "hmac.h"
