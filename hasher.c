@@ -32,6 +32,9 @@ void hasher_Init(Hasher *hasher, HasherType type) {
 	case HASHER_BLAKE:
 		blake256_Init(&hasher->ctx.blake);
 		break;
+	case HASHER_GROESTL:
+		sph_groestl512_init(&hasher->ctx.groestl);
+		break;
 	}
 }
 
@@ -47,6 +50,9 @@ void hasher_Update(Hasher *hasher, const uint8_t *data, size_t length) {
 	case HASHER_BLAKE:
 		blake256_Update(&hasher->ctx.blake, data, length);
 		break;
+	case HASHER_GROESTL:
+		sph_groestl512(&hasher->ctx.groestl, data, length);
+		break;
 	}
 }
 
@@ -57,6 +63,9 @@ void hasher_Final(Hasher *hasher, uint8_t hash[HASHER_DIGEST_LENGTH]) {
 		break;
 	case HASHER_BLAKE:
 		blake256_Final(&hasher->ctx.blake, hash);
+		break;
+	case HASHER_GROESTL:
+		sph_groestl512_close(&hasher->ctx.groestl, hash);
 		break;
 	}
 }

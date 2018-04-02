@@ -2813,6 +2813,18 @@ START_TEST(test_address)
 }
 END_TEST
 
+START_TEST(test_address_grs)
+{
+	char address[36];
+	uint8_t pub_key[65];
+
+	memcpy(pub_key, fromhex("03c6d9cc725bb7e19c026df03bf693ee1171371a8eaf25f04b7a58f6befabcd38c"), 33);
+	ecdsa_get_address(pub_key,   0,    HASHER_SHA2, address, sizeof(address)); ck_assert_str_eq(address, "1JAd7XCBzGudGpJQSDSfpmJhiygtLQWaGL");
+	ecdsa_get_address(pub_key,  36,    HASHER_SHA2, address, sizeof(address)); ck_assert_str_eq(address, "FnLLZRvZYmbAiRKXKKS9HH72P8xqt2ry2g"); //FIXME???
+	ecdsa_get_address(pub_key,  36, HASHER_GROESTL, address, sizeof(address)); ck_assert_str_eq(address, "FnLLZRvZYmbAiRKXKKS9HH72P8xqt2ry2g");
+}
+END_TEST
+
 START_TEST(test_pubkey_validity)
 {
 	uint8_t pub_key[65];
@@ -4400,6 +4412,10 @@ Suite *test_suite(void)
 	Suite *s = suite_create("trezor-crypto");
 	TCase *tc;
 
+	tc = tcase_create("address_grs");
+	tcase_add_test(tc, test_address_grs);
+	suite_add_tcase(s, tc);
+#if 0
 	tc = tcase_create("bignum");
 	tcase_add_test(tc, test_bignum_read_be);
 	tcase_add_test(tc, test_bignum_write_be);
@@ -4619,7 +4635,7 @@ Suite *test_suite(void)
 	tc = tcase_create("segwit");
 	tcase_add_test(tc, test_segwit);
 	suite_add_tcase(s, tc);
-
+#endif
 	return s;
 }
 

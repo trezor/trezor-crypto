@@ -905,7 +905,9 @@ void ecdsa_get_address(const uint8_t *pub_key, uint32_t version, HasherType hash
 {
 	uint8_t raw[MAX_ADDR_RAW_SIZE];
 	size_t prefix_len = address_prefix_bytes_len(version);
-	ecdsa_get_address_raw(pub_key, version, hasher_type, raw);
+	/* if (version == 36) // FIXME */
+	/* 	hasher_type = HASHER_GROESTL; */
+	ecdsa_get_address_raw(pub_key, version, hasher_type == HASHER_GROESTL ? HASHER_SHA2 : hasher_type, raw);
 	base58_encode_check(raw, 20 + prefix_len, hasher_type, addr, addrsize);
 	// not as important to clear this one, but we might as well
 	memzero(raw, sizeof(raw));

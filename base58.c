@@ -130,13 +130,16 @@ bool b58tobin(void *bin, size_t *binszp, const char *b58)
 
 int b58check(const void *bin, size_t binsz, HasherType hasher_type, const char *base58str)
 {
-	unsigned char buf[32];
+	unsigned char buf[64]; //FIXME
 	const uint8_t *binc = bin;
 	unsigned i;
+	uint8_t hashlen = 32;
+	if (hasher_type == HASHER_GROESTL) //FIXME
+		hashlen = 64;
 	if (binsz < 4)
 		return -4;
 	hasher_Raw(hasher_type, bin, binsz - 4, buf);
-	hasher_Raw(hasher_type, buf, 32, buf);
+	hasher_Raw(hasher_type, buf, hashlen, buf);
 	if (memcmp(&binc[binsz - 4], buf, 4))
 		return -1;
 
@@ -198,11 +201,14 @@ int base58_encode_check(const uint8_t *data, int datalen, HasherType hasher_type
 	if (datalen > 128) {
 		return 0;
 	}
-	uint8_t buf[datalen + 32];
+	hasher_type = HASHER_GROESTL; //FIXME
+	uint8_t buf[datalen + 64], hashlen = 32;
 	uint8_t *hash = buf + datalen;
+	if (hasher_type == HASHER_GROESTL) //FIXME
+		hashlen = 64;
 	memcpy(buf, data, datalen);
 	hasher_Raw(hasher_type, data, datalen, hash);
-	hasher_Raw(hasher_type, hash, 32, hash);
+	hasher_Raw(hasher_type, hash, hashlen, hash);
 	size_t res = strsize;
 	bool success = b58enc(str, &res, buf, datalen + 4);
 	memzero(buf, sizeof(buf));
@@ -214,6 +220,7 @@ int base58_decode_check(const char *str, HasherType hasher_type, uint8_t *data, 
 	if (datalen > 128) {
 		return 0;
 	}
+	hasher_type = HASHER_GROESTL; //FIXME
 	uint8_t d[datalen + 4];
 	size_t res = datalen + 4;
 	if (b58tobin(d, &res, str) != true) {
