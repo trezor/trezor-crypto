@@ -56,6 +56,11 @@
 #define BIP39_CACHE_SIZE 4
 #endif
 
+// include generate code (requires 240 bytes BSS, random_buffer() function)
+#ifndef USE_BIP39_GENERATE
+#define USE_BIP39_GENERATE 1
+#endif
+
 // support Ethereum operations
 #ifndef USE_ETHEREUM
 #define USE_ETHEREUM 0
