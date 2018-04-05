@@ -24,14 +24,17 @@
 /* OpenSSL's SHA256_CTX/SHA512_CTX conflicts with our own */
 #define SHA256_CTX _openssl_SHA256_CTX
 #define SHA512_CTX _openssl_SHA512_CTX
+#include <openssl/bn.h>
 #include <openssl/ecdsa.h>
 #include <openssl/obj_mac.h>
 #include <openssl/sha.h>
+#include <openssl/opensslv.h>
 #undef SHA256_CTX
 #undef SHA512_CTX
 
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "ecdsa.h"
 #include "rand.h"
@@ -42,7 +45,7 @@
 
 void openssl_check(unsigned int iterations, int nid, const ecdsa_curve *curve)
 {
-	uint8_t sig[64], pub_key33[33], pub_key65[65], priv_key[32], msg[256], buffer[1000], hash[32], *p;
+	uint8_t sig[64], pub_key33[33], pub_key65[65], priv_key[32], msg[256], hash[32];
 	struct SHA256state_st sha256;
 	EC_GROUP *ecgroup;
 
@@ -62,24 +65,10 @@ void openssl_check(unsigned int iterations, int nid, const ecdsa_curve *curve)
 		// generate the key
 		EC_KEY_generate_key(eckey);
 		// copy key to buffer
-		p = buffer;
-		i2d_ECPrivateKey(eckey, &p);
-
-		// size of the key is in buffer[8] and the key begins right after that
-		int s = buffer[8];
-		// extract key data
-		if (s > 32) {
-			for (int j = 0; j < 32; j++) {
-				priv_key[j] = buffer[j + s - 23];
-			}
-		} else {
-			for (int j = 0; j < 32 - s; j++) {
-				priv_key[j] = 0;
-			}
-			for (int j = 0; j < s; j++) {
-				priv_key[j + 32 - s] = buffer[j + 9];
-			}
-		}
+		const BIGNUM *K = EC_KEY_get0_private_key(eckey);
+		int bn_off = sizeof(priv_key) - BN_num_bytes(K);
+		memset(priv_key, 0, bn_off);
+		BN_bn2bin(K, priv_key + bn_off);
 
 		// use our ECDSA signer to sign the message with the key
 		if (ecdsa_sign(curve, HASHER_SHA2, priv_key, msg, msg_len, sig, NULL, NULL) != 0) {
@@ -103,8 +92,14 @@ void openssl_check(unsigned int iterations, int nid, const ecdsa_curve *curve)
 
 		// copy signature to the OpenSSL struct
 		ECDSA_SIG *signature = ECDSA_SIG_new();
+#if OPENSSL_VERSION_NUMBER  < 0x10100000L
 		BN_bin2bn(sig, 32, signature->r);
 		BN_bin2bn(sig + 32, 32, signature->s);
+#else
+		BIGNUM *R = BN_bin2bn(sig, 32, NULL);
+		BIGNUM *S = BN_bin2bn(sig + 32, 32, NULL);
+		ECDSA_SIG_set0(signature, R, S);
+#endif
 
 		// compute the digest of the message
 		// note: these are OpenSSL functions, not our own
@@ -113,8 +108,9 @@ void openssl_check(unsigned int iterations, int nid, const ecdsa_curve *curve)
 		SHA256_Final(hash, &sha256);
 
 		// verify all went well, i.e. we can decrypt our signature with OpenSSL
-		if (ECDSA_do_verify(hash, 32, signature, eckey) != 1) {
-			printf("OpenSSL verification failed\n");
+		int v = ECDSA_do_verify(hash, 32, signature, eckey);
+		if (v != 1) {
+			printf("OpenSSL verification failed (%d)\n", v);
 			return;
 		}
 

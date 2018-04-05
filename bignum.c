@@ -27,7 +27,7 @@
 #include <string.h>
 #include <assert.h>
 #include "bignum.h"
-#include "macros.h"
+#include "memzero.h"
 
 /* big number library */
 
@@ -111,13 +111,13 @@ void bn_read_be(const uint8_t *in_number, bignum256 *out_number)
 void bn_write_be(const bignum256 *in_number, uint8_t *out_number)
 {
 	int i;
-	uint32_t temp = in_number->val[8] << 16;
+	uint32_t temp = in_number->val[8];
 	for (i = 0; i < 8; i++) {
-		// invariant: temp = (in_number >> 30*(8-i)) << (16 + 2i)
+		// invariant: temp = (in_number >> 30*(8-i))
 		uint32_t limb = in_number->val[7 - i];
-		temp |= limb >> (14 - 2*i);
+		temp = (temp << (16 + 2*i)) | (limb >> (14 - 2*i));
 		write_be(out_number + i * 4, temp);
-		temp = limb << (18 + 2*i);
+		temp = limb;
 	}
 }
 
@@ -146,13 +146,13 @@ void bn_read_le(const uint8_t *in_number, bignum256 *out_number)
 void bn_write_le(const bignum256 *in_number, uint8_t *out_number)
 {
 	int i;
-	uint32_t temp = in_number->val[8] << 16;
+	uint32_t temp = in_number->val[8];
 	for (i = 0; i < 8; i++) {
-		// invariant: temp = (in_number >> 30*(8-i)) << (16 + 2i)
+		// invariant: temp = (in_number >> 30*(8-i))
 		uint32_t limb = in_number->val[7 - i];
-		temp |= limb >> (14 - 2*i);
+		temp = (temp << (16 + 2*i)) | (limb >> (14 - 2*i));
 		write_le(out_number + (7 - i) * 4, temp);
-		temp = limb << (18 + 2*i);
+		temp = limb;
 	}
 }
 
@@ -324,19 +324,19 @@ void bn_rshift(bignum256 *a)
 // sets bit in bignum
 void bn_setbit(bignum256 *a, uint8_t bit)
 {
-	a->val[bit / 30] |= (1 << (bit % 30));
+	a->val[bit / 30] |= (1u << (bit % 30));
 }
 
 // clears bit in bignum
 void bn_clearbit(bignum256 *a, uint8_t bit)
 {
-	a->val[bit / 30] &= ~(1 << (bit % 30));
+	a->val[bit / 30] &= ~(1u << (bit % 30));
 }
 
 // tests bit in bignum
 uint32_t bn_testbit(bignum256 *a, uint8_t bit)
 {
-	return a->val[bit / 30] & (1 << (bit % 30));
+	return a->val[bit / 30] & (1u << (bit % 30));
 }
 
 // a = b ^ c
@@ -490,7 +490,7 @@ void bn_multiply(const bignum256 *k, bignum256 *x, const bignum256 *prime)
 	uint32_t res[18] = {0};
 	bn_multiply_long(k, x, res);
 	bn_multiply_reduce(x, res, prime); 
-	MEMSET_BZERO(res, sizeof(res));
+	memzero(res, sizeof(res));
 }
 
 // partly reduce x modulo prime
@@ -552,8 +552,8 @@ void bn_sqrt(bignum256 *x, const bignum256 *prime)
 	}
 	bn_mod(&res, prime);
 	memcpy(x, &res, sizeof(bignum256));
-	MEMSET_BZERO(&res, sizeof(res));
-	MEMSET_BZERO(&p, sizeof(p));
+	memzero(&res, sizeof(res));
+	memzero(&p, sizeof(p));
 }
 
 #if ! USE_INVERSE_FAST
@@ -694,7 +694,7 @@ void bn_inverse(bignum256 *x, const bignum256 *prime)
 		}
 		// count up to 32 zero bits of even->a.
 		j = 0;
-		while ((even->a[0] & (1 << j)) == 0) {
+		while ((even->a[0] & (1u << j)) == 0) {
 			j++;
 		}
 		if (j > 0) {
@@ -840,7 +840,7 @@ void bn_inverse(bignum256 *x, const bignum256 *prime)
 		//   s + factor*prime mod 2^k == 0
 		// i.e. factor = s * -1/prime mod 2^k.
 		// Then compute s + factor*prime and shift right by k bits.
-		uint32_t mask = (1 << k) - 1;
+		uint32_t mask = (1u << k) - 1;
 		uint32_t factor = (inverse * us.a[8]) & mask;
 		temp = (us.a[8] + (uint64_t) pp[0] * factor) >> k;
 		assert(((us.a[8] + pp[0] * factor) & mask) == 0);
@@ -861,9 +861,9 @@ void bn_inverse(bignum256 *x, const bignum256 *prime)
 	x->val[i] = temp32;
 
 	// let's wipe all temp buffers
-	MEMSET_BZERO(pp, sizeof(pp));
-	MEMSET_BZERO(&us, sizeof(us));
-	MEMSET_BZERO(&vr, sizeof(vr));
+	memzero(pp, sizeof(pp));
+	memzero(&us, sizeof(us));
+	memzero(&vr, sizeof(vr));
 }
 #endif
 
@@ -990,7 +990,19 @@ size_t bn_format(const bignum256 *amnt, const char *prefix, const char *suffix, 
 	size_t prefixlen = prefix ? strlen(prefix) : 0;
 	size_t suffixlen = suffix ? strlen(suffix) : 0;
 
-	char *start = &out[prefixlen + suffixlen], *end = &out[outlen];
+	/* add prefix to beginning of out buffer */
+	if (prefixlen) {
+		memcpy(out, prefix, prefixlen);
+	}
+	/* add suffix to end of out buffer */
+	if (suffixlen) {
+		memcpy(&out[outlen - suffixlen - 1], suffix, suffixlen);
+	}
+	/* nul terminate (even if suffix = NULL) */
+	out[outlen - 1] = '\0';
+
+	/* fill number between prefix and suffix (between start and end) */
+	char *start = &out[prefixlen], *end = &out[outlen - suffixlen - 1];
 	char *str = end;
 
 #define BN_FORMAT_PUSH_CHECKED(c) \
@@ -1056,19 +1068,14 @@ size_t bn_format(const bignum256 *amnt, const char *prefix, const char *suffix, 
 		BN_FORMAT_PUSH(0);
 	}
 
-	size_t len = end - str;
+	/* finally move number to &out[prefixlen] to close the gap between
+	 * prefix and str.  len is length of number + suffix + traling 0
+	 */
+	size_t len = &out[outlen] - str;
 	memmove(&out[prefixlen], str, len);
 
-	if (prefixlen) {
-		memcpy(out, prefix, prefixlen);
-	}
-	if (suffixlen) {
-		memcpy(&out[prefixlen + len], suffix, suffixlen);
-	}
-
-	size_t length = prefixlen + len + suffixlen;
-	out[length] = '\0';
-	return length;
+	/* return length of number including prefix and suffix without trailing 0 */
+	return prefixlen + len - 1;
 }
 
 #if USE_BN_PRINT

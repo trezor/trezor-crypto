@@ -27,10 +27,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-int finalize_rand(void);
 uint32_t random32(void);
-uint32_t random_uniform(uint32_t n);
 void random_buffer(uint8_t *buf, size_t len);
+
+uint32_t random_uniform(uint32_t n);
 void random_permute(char *buf, size_t len);
 
 #endif

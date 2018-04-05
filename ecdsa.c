@@ -35,9 +35,9 @@
 #include "hmac.h"
 #include "ecdsa.h"
 #include "base58.h"
-#include "macros.h"
 #include "secp256k1.h"
 #include "rfc6979.h"
+#include "memzero.h"
 
 // Set cp2 = cp1
 void point_copy(const curve_point *cp1, curve_point *cp2)
@@ -542,8 +542,8 @@ void point_multiply(const ecdsa_curve *curve, const bignum256 *k, const curve_po
 	}
 	conditional_negate(sign, &jres.z, prime);
 	jacobian_to_curve(&jres, res, prime);
-	MEMSET_BZERO(&a, sizeof(a));
-	MEMSET_BZERO(&jres, sizeof(jres));
+	memzero(&a, sizeof(a));
+	memzero(&jres, sizeof(jres));
 }
 
 #if USE_PRECOMPUTED_CP
@@ -630,8 +630,8 @@ void scalar_multiply(const ecdsa_curve *curve, const bignum256 *k, curve_point *
 	}
 	conditional_negate(((a.val[0] >> 4) & 1) - 1, &jres.y, prime);
 	jacobian_to_curve(&jres, res, prime);
-	MEMSET_BZERO(&a, sizeof(a));
-	MEMSET_BZERO(&jres, sizeof(jres));
+	memzero(&a, sizeof(a));
+	memzero(&jres, sizeof(jres));
 }
 
 #else
@@ -653,12 +653,12 @@ int ecdh_multiply(const ecdsa_curve *curve, const uint8_t *priv_key, const uint8
 	bignum256 k;
 	bn_read_be(priv_key, &k);
 	point_multiply(curve, &k, &point, &point);
-	MEMSET_BZERO(&k, sizeof(k));
+	memzero(&k, sizeof(k));
 
 	session_key[0] = 0x04;
 	bn_write_be(&point.x, session_key + 1);
 	bn_write_be(&point.y, session_key + 33);
-	MEMSET_BZERO(&point, sizeof(point));
+	memzero(&point, sizeof(point));
 
 	return 0;
 }
@@ -685,8 +685,8 @@ void init_rfc6979(const uint8_t *priv_key, const uint8_t *hash, rfc6979_state *s
 	hmac_sha256(state->k, sizeof(state->k), buf, sizeof(buf), state->k);
 	hmac_sha256(state->k, sizeof(state->k), state->v, sizeof(state->v), state->v);
 
-	MEMSET_BZERO(bx, sizeof(bx));
-	MEMSET_BZERO(buf, sizeof(buf));
+	memzero(bx, sizeof(bx));
+	memzero(buf, sizeof(buf));
 }
 
 // generate next number from deterministic random number generator
@@ -700,7 +700,7 @@ void generate_rfc6979(uint8_t rnd[32], rfc6979_state *state)
 	hmac_sha256(state->k, sizeof(state->k), buf, sizeof(state->v) + 1, state->k);
 	hmac_sha256(state->k, sizeof(state->k), state->v, sizeof(state->v), state->v);
 	memcpy(rnd, buf, 32);
-	MEMSET_BZERO(buf, sizeof(buf));
+	memzero(buf, sizeof(buf));
 }
 
 // generate K in a deterministic way, according to RFC6979
@@ -710,31 +710,19 @@ void generate_k_rfc6979(bignum256 *k, rfc6979_state *state)
 	uint8_t buf[32];
 	generate_rfc6979(buf, state);
 	bn_read_be(buf, k);
-	MEMSET_BZERO(buf, sizeof(buf));
+	memzero(buf, sizeof(buf));
 }
 
 // msg is a data to be signed
 // msg_len is the message length
-int ecdsa_sign(const ecdsa_curve *curve, HasherType hasher_type, const uint8_t *priv_key, const uint8_t *msg, uint32_t msg_len, uint8_t *sig, uint8_t *pby, int (*is_canonical)(uint8_t by, uint8_t sig[64]))
+int ecdsa_sign(const ecdsa_curve *curve, HasherType hasher_sign, const uint8_t *priv_key, const uint8_t *msg, uint32_t msg_len, uint8_t *sig, uint8_t *pby, int (*is_canonical)(uint8_t by, uint8_t sig[64]))
 {
 	uint8_t hash[32];
-	hasher_Raw(hasher_type, msg, msg_len, hash);
+	hasher_Raw(hasher_sign, msg, msg_len, hash);
 	int res = ecdsa_sign_digest(curve, priv_key, hash, sig, pby, is_canonical);
-	MEMSET_BZERO(hash, sizeof(hash));
+	memzero(hash, sizeof(hash));
 	return res;
 
-}
-
-// msg is a data to be signed
-// msg_len is the message length
-int ecdsa_sign_double(const ecdsa_curve *curve, HasherType hasher_type, const uint8_t *priv_key, const uint8_t *msg, uint32_t msg_len, uint8_t *sig, uint8_t *pby, int (*is_canonical)(uint8_t by, uint8_t sig[64]))
-{
-	uint8_t hash[32];
-	hasher_Raw(hasher_type, msg, msg_len, hash);
-	hasher_Raw(hasher_type, hash, 32, hash);
-	int res = ecdsa_sign_digest(curve, priv_key, hash, sig, pby, is_canonical);
-	MEMSET_BZERO(hash, sizeof(hash));
-	return res;
 }
 
 // uses secp256k1 curve
@@ -818,20 +806,20 @@ int ecdsa_sign_digest(const ecdsa_curve *curve, const uint8_t *priv_key, const u
 			*pby = by;
 		}
 
-		MEMSET_BZERO(&k, sizeof(k));
-		MEMSET_BZERO(&randk, sizeof(randk));
+		memzero(&k, sizeof(k));
+		memzero(&randk, sizeof(randk));
 #if USE_RFC6979
-		MEMSET_BZERO(&rng, sizeof(rng));
+		memzero(&rng, sizeof(rng));
 #endif
 		return 0;
 	}
 
 	// Too many retries without a valid signature
 	// -> fail with an error
-	MEMSET_BZERO(&k, sizeof(k));
-	MEMSET_BZERO(&randk, sizeof(randk));
+	memzero(&k, sizeof(k));
+	memzero(&randk, sizeof(randk));
 #if USE_RFC6979
-	MEMSET_BZERO(&rng, sizeof(rng));
+	memzero(&rng, sizeof(rng));
 #endif
 	return -1;
 }
@@ -846,8 +834,8 @@ void ecdsa_get_public_key33(const ecdsa_curve *curve, const uint8_t *priv_key, u
 	scalar_multiply(curve, &k, &R);
 	pub_key[0] = 0x02 | (R.y.val[0] & 0x01);
 	bn_write_be(&R.x, pub_key + 1);
-	MEMSET_BZERO(&R, sizeof(R));
-	MEMSET_BZERO(&k, sizeof(k));
+	memzero(&R, sizeof(R));
+	memzero(&k, sizeof(k));
 }
 
 void ecdsa_get_public_key65(const ecdsa_curve *curve, const uint8_t *priv_key, uint8_t *pub_key)
@@ -861,8 +849,8 @@ void ecdsa_get_public_key65(const ecdsa_curve *curve, const uint8_t *priv_key, u
 	pub_key[0] = 0x04;
 	bn_write_be(&R.x, pub_key + 1);
 	bn_write_be(&R.y, pub_key + 33);
-	MEMSET_BZERO(&R, sizeof(R));
-	MEMSET_BZERO(&k, sizeof(k));
+	memzero(&R, sizeof(R));
+	memzero(&k, sizeof(k));
 }
 
 int ecdsa_uncompress_pubkey(const ecdsa_curve *curve, const uint8_t *pub_key, uint8_t *uncompressed)
@@ -880,75 +868,75 @@ int ecdsa_uncompress_pubkey(const ecdsa_curve *curve, const uint8_t *pub_key, ui
 	return 1;
 }
 
-void ecdsa_get_pubkeyhash(const uint8_t *pub_key, HasherType hasher_type, uint8_t *pubkeyhash)
+void ecdsa_get_pubkeyhash(const uint8_t *pub_key, HasherType hasher_pubkey, uint8_t *pubkeyhash)
 {
 	uint8_t h[HASHER_DIGEST_LENGTH];
 	if (pub_key[0] == 0x04) {  // uncompressed format
-		hasher_Raw(hasher_type, pub_key, 65, h);
+		hasher_Raw(hasher_pubkey, pub_key, 65, h);
 	} else if (pub_key[0] == 0x00) { // point at infinity
-		hasher_Raw(hasher_type, pub_key,  1, h);
+		hasher_Raw(hasher_pubkey, pub_key,  1, h);
 	} else { // expecting compressed format
-		hasher_Raw(hasher_type, pub_key, 33, h);
+		hasher_Raw(hasher_pubkey, pub_key, 33, h);
 	}
 	ripemd160(h, HASHER_DIGEST_LENGTH, pubkeyhash);
-	MEMSET_BZERO(h, sizeof(h));
+	memzero(h, sizeof(h));
 }
 
-void ecdsa_get_address_raw(const uint8_t *pub_key, uint32_t version, HasherType hasher_type, uint8_t *addr_raw)
+void ecdsa_get_address_raw(const uint8_t *pub_key, uint32_t version, HasherType hasher_pubkey, uint8_t *addr_raw)
 {
 	size_t prefix_len = address_prefix_bytes_len(version);
 	address_write_prefix_bytes(version, addr_raw);
-	ecdsa_get_pubkeyhash(pub_key, hasher_type, addr_raw + prefix_len);
+	ecdsa_get_pubkeyhash(pub_key, hasher_pubkey, addr_raw + prefix_len);
 }
 
-void ecdsa_get_address(const uint8_t *pub_key, uint32_t version, HasherType hasher_type, char *addr, int addrsize)
+void ecdsa_get_address(const uint8_t *pub_key, uint32_t version, HasherType hasher_pubkey, HasherType hasher_base58, char *addr, int addrsize)
 {
 	uint8_t raw[MAX_ADDR_RAW_SIZE];
 	size_t prefix_len = address_prefix_bytes_len(version);
-	ecdsa_get_address_raw(pub_key, version, hasher_type, raw);
-	base58_encode_check(raw, 20 + prefix_len, hasher_type, addr, addrsize);
+	ecdsa_get_address_raw(pub_key, version, hasher_pubkey, raw);
+	base58_encode_check(raw, 20 + prefix_len, hasher_base58, addr, addrsize);
 	// not as important to clear this one, but we might as well
-	MEMSET_BZERO(raw, sizeof(raw));
+	memzero(raw, sizeof(raw));
 }
 
-void ecdsa_get_address_segwit_p2sh_raw(const uint8_t *pub_key, uint32_t version, HasherType hasher_type, uint8_t *addr_raw)
+void ecdsa_get_address_segwit_p2sh_raw(const uint8_t *pub_key, uint32_t version, HasherType hasher_pubkey, uint8_t *addr_raw)
 {
 	size_t prefix_len = address_prefix_bytes_len(version);
 	uint8_t digest[32];
 	addr_raw[0] = 0; // version byte
 	addr_raw[1] = 20; // push 20 bytes
-	ecdsa_get_pubkeyhash(pub_key, hasher_type, addr_raw + 2);
-	hasher_Raw(hasher_type, addr_raw, 22, digest);
+	ecdsa_get_pubkeyhash(pub_key, hasher_pubkey, addr_raw + 2);
+	hasher_Raw(hasher_pubkey, addr_raw, 22, digest);
 	address_write_prefix_bytes(version, addr_raw);
 	ripemd160(digest, 32, addr_raw + prefix_len);
 }
 
-void ecdsa_get_address_segwit_p2sh(const uint8_t *pub_key, uint32_t version, HasherType hasher_type, char *addr, int addrsize)
+void ecdsa_get_address_segwit_p2sh(const uint8_t *pub_key, uint32_t version, HasherType hasher_pubkey, HasherType hasher_base58, char *addr, int addrsize)
 {
 	uint8_t raw[MAX_ADDR_RAW_SIZE];
 	size_t prefix_len = address_prefix_bytes_len(version);
-	ecdsa_get_address_segwit_p2sh_raw(pub_key, version, hasher_type, raw);
-	base58_encode_check(raw, prefix_len + 20, hasher_type, addr, addrsize);
-	MEMSET_BZERO(raw, sizeof(raw));
+	ecdsa_get_address_segwit_p2sh_raw(pub_key, version, hasher_pubkey, raw);
+	base58_encode_check(raw, prefix_len + 20, hasher_base58, addr, addrsize);
+	memzero(raw, sizeof(raw));
 }
 
-void ecdsa_get_wif(const uint8_t *priv_key, uint32_t version, HasherType hasher_type, char *wif, int wifsize)
+void ecdsa_get_wif(const uint8_t *priv_key, uint32_t version, HasherType hasher_base58, char *wif, int wifsize)
 {
 	uint8_t wif_raw[MAX_WIF_RAW_SIZE];
 	size_t prefix_len = address_prefix_bytes_len(version);
 	address_write_prefix_bytes(version, wif_raw);
 	memcpy(wif_raw + prefix_len, priv_key, 32);
 	wif_raw[prefix_len + 32] = 0x01;
-	base58_encode_check(wif_raw, prefix_len + 32 + 1, hasher_type, wif, wifsize);
+	base58_encode_check(wif_raw, prefix_len + 32 + 1, hasher_base58, wif, wifsize);
 	// private keys running around our stack can cause trouble
-	MEMSET_BZERO(wif_raw, sizeof(wif_raw));
+	memzero(wif_raw, sizeof(wif_raw));
 }
 
-int ecdsa_address_decode(const char *addr, uint32_t version, HasherType hasher_type, uint8_t *out)
+int ecdsa_address_decode(const char *addr, uint32_t version, HasherType hasher_base58, uint8_t *out)
 {
 	if (!addr) return 0;
 	int prefix_len = address_prefix_bytes_len(version);
-	return base58_decode_check(addr, hasher_type, out, 20 + prefix_len) == 20 + prefix_len
+	return base58_decode_check(addr, hasher_base58, out, 20 + prefix_len) == 20 + prefix_len
 		&& address_check_prefix(out, version);
 }
 
@@ -1029,22 +1017,12 @@ int ecdsa_validate_pubkey(const ecdsa_curve *curve, const curve_point *pub)
 // msg is a data that was signed
 // msg_len is the message length
 
-int ecdsa_verify(const ecdsa_curve *curve, HasherType hasher_type, const uint8_t *pub_key, const uint8_t *sig, const uint8_t *msg, uint32_t msg_len)
+int ecdsa_verify(const ecdsa_curve *curve, HasherType hasher_sign, const uint8_t *pub_key, const uint8_t *sig, const uint8_t *msg, uint32_t msg_len)
 {
 	uint8_t hash[32];
-	hasher_Raw(hasher_type, msg, msg_len, hash);
+	hasher_Raw(hasher_sign, msg, msg_len, hash);
 	int res = ecdsa_verify_digest(curve, pub_key, sig, hash);
-	MEMSET_BZERO(hash, sizeof(hash));
-	return res;
-}
-
-int ecdsa_verify_double(const ecdsa_curve *curve, HasherType hasher_type, const uint8_t *pub_key, const uint8_t *sig, const uint8_t *msg, uint32_t msg_len)
-{
-	uint8_t hash[32];
-	hasher_Raw(hasher_type, msg, msg_len, hash);
-	hasher_Raw(hasher_type, hash, 32, hash);
-	int res = ecdsa_verify_digest(curve, pub_key, sig, hash);
-	MEMSET_BZERO(hash, sizeof(hash));
+	memzero(hash, sizeof(hash));
 	return res;
 }
 
@@ -1143,11 +1121,11 @@ int ecdsa_verify_digest(const ecdsa_curve *curve, const uint8_t *pub_key, const 
 		}
 	}
 
-	MEMSET_BZERO(&pub, sizeof(pub));
-	MEMSET_BZERO(&res, sizeof(res));
-	MEMSET_BZERO(&r, sizeof(r));
-	MEMSET_BZERO(&s, sizeof(s));
-	MEMSET_BZERO(&z, sizeof(z));
+	memzero(&pub, sizeof(pub));
+	memzero(&res, sizeof(res));
+	memzero(&r, sizeof(r));
+	memzero(&s, sizeof(s));
+	memzero(&z, sizeof(z));
 
 	// all OK
 	return result;

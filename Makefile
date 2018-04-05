@@ -24,12 +24,10 @@ CFLAGS   += $(OPTFLAGS) \
             -Werror
 
 CFLAGS += -I.
-CFLAGS += -Iaes
-CFLAGS += -Ichacha20poly1305
-CFLAGS += -Ied25519-donna
 CFLAGS += -DUSE_ETHEREUM=1
 CFLAGS += -DUSE_GRAPHENE=1
 CFLAGS += -DUSE_NEM=1
+CFLAGS += $(shell pkg-config --cflags openssl)
 
 # disable certain optimizations and features when small footprint is required
 ifdef SMALL
@@ -53,11 +51,12 @@ SRCS  += chacha20poly1305/chacha20poly1305.c chacha20poly1305/chacha_merged.c ch
 SRCS  += rc4.c
 SRCS  += nem.c
 SRCS  += segwit_addr.c cash_addr.c
+SRCS  += memzero.c
 
 OBJS   = $(SRCS:.c=.o)
 
-TESTLIBS = $(shell pkg-config --libs check) -lrt -lpthread -lm
-TESTSSLLIBS = -lcrypto
+TESTLIBS = $(shell pkg-config --libs check) -lpthread -lm
+TESTSSLLIBS = $(shell pkg-config --libs openssl)
 
 all: test_check test_openssl test_speed aes/aestst tools libtrezor-crypto.so
 
