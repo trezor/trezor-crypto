@@ -49,6 +49,18 @@ void hasher_Init(Hasher *hasher, HasherType type) {
 	case HASHER_OVERWINTER_PREIMAGE:
 		blake2b_InitPersonal(&hasher->ctx.blake2b, 32, "ZcashSigHash\x19\x1b\xa8\x5b", 16);  // BRANCH_ID = 0x5ba81b19
 		break;
+	case HASHER_KOTO_OVERWINTER_PREVOUTS:
+		blake2b_InitPersonal(&hasher->ctx.blake2b, 32, "Koto_PrevoutHash", 16);
+		break;
+	case HASHER_KOTO_OVERWINTER_SEQUENCE:
+		blake2b_InitPersonal(&hasher->ctx.blake2b, 32, "Koto_SequencHash", 16);
+		break;
+	case HASHER_KOTO_OVERWINTER_OUTPUTS:
+		blake2b_InitPersonal(&hasher->ctx.blake2b, 32, "Koto_OutputsHash", 16);
+		break;
+	case HASHER_KOTO_OVERWINTER_PREIMAGE:
+		blake2b_InitPersonal(&hasher->ctx.blake2b, 32, "Koto_SigHash\x19\x1b\xa8\x5b", 16);  // BRANCH_ID = 0x5ba81b19
+		break;
 	}
 }
 
