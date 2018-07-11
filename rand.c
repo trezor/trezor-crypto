@@ -50,6 +50,30 @@ uint32_t random32(void)
 
 #endif /* RAND_PLATFORM_INDEPENDENT */
 
+#if defined(USE_LIBSODIUM) && USE_LIBSODIUM
+
+#include <sodium.h>
+
+int random_init(void){
+  return sodium_init();
+}
+
+uint32_t random32(void)
+{
+  return randombytes_random();
+}
+
+void __attribute__((weak)) random_buffer(uint8_t *buf, size_t len)
+{
+  randombytes_buf(buf, len);
+}
+
+uint32_t random_uniform(uint32_t n)
+{
+  return randombytes_uniform(n);
+}
+#else
+
 //
 // The following code is platform independent
 //
@@ -71,6 +95,8 @@ uint32_t random_uniform(uint32_t n)
 	while ((x = random32()) >= max);
 	return x / (max / n);
 }
+
+#endif /* !USE_LIBSODIUM */
 
 void random_permute(char *str, size_t len)
 {
