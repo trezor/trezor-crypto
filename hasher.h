@@ -27,6 +27,7 @@
 #include <stdint.h>
 
 #include "sha2.h"
+#include "sha3.h"
 #include "blake256.h"
 #include "groestl.h"
 #include "blake2b.h"
@@ -42,6 +43,12 @@ typedef enum {
 
     HASHER_GROESTLD_TRUNC, /* Double Groestl512 hasher truncated to 256 bits */
 
+    HASHER_SHA3,
+
+#if USE_KECCAK
+    HASHER_SHA3K,
+#endif
+
     HASHER_OVERWINTER_PREVOUTS,
     HASHER_OVERWINTER_SEQUENCE,
     HASHER_OVERWINTER_OUTPUTS,
@@ -53,6 +60,7 @@ typedef struct {
 
     union {
         SHA256_CTX sha2;
+        SHA3_CTX sha3;
         BLAKE256_CTX blake;
         GROESTL512_CTX groestl;
         BLAKE2B_CTX blake2b;
