@@ -22,7 +22,6 @@
  */
 
 #include <string.h>
-#include <stdbool.h>
 
 #include "bip39.h"
 #include "hmac.h"
@@ -46,6 +45,7 @@ static CONFIDENTIAL struct {
 
 #endif
 
+#if USE_BIP39_GENERATE
 const char *mnemonic_generate(int strength)
 {
 	if (strength % 32 || strength < 128 || strength > 256) {
@@ -69,11 +69,23 @@ const uint16_t *mnemonic_generate_indexes(int strength)
 	memzero(data, sizeof(data));
 	return r;
 }
+#endif
 
 const char *mnemonic_from_data(const uint8_t *data, int len)
 {
+	static CONFIDENTIAL char mnemo[24 * 10];
+
+    if(mnemonic_from_data_p(data, len, mnemo)) {
+        return mnemo;
+    } else {
+        return 0;
+    }
+}
+
+bool mnemonic_from_data_p(const uint8_t *data, int len, char mnemo[240])
+{
 	if (len % 4 || len < 16 || len > 32) {
-		return 0;
+		return false;
 	}
 
 	uint8_t bits[32 + 1];
@@ -85,7 +97,6 @@ const char *mnemonic_from_data(const uint8_t *data, int len)
 	memcpy(bits, data, len);
 
 	int mlen = len * 3 / 4;
-	static CONFIDENTIAL char mnemo[24 * 10];
 
 	int i, j, idx;
 	char *p = mnemo;
@@ -102,13 +113,24 @@ const char *mnemonic_from_data(const uint8_t *data, int len)
 	}
 	memzero(bits, sizeof(bits));
 
-	return mnemo;
+    return true;
 }
 
 const uint16_t *mnemonic_from_data_indexes(const uint8_t *data, int len)
 {
+	static CONFIDENTIAL uint16_t mnemo[24];
+
+    if(mnemonic_from_data_indexes_p(data, len, mnemo)) {
+        return mnemo;
+    } else {
+        return 0;
+    }
+}
+
+bool mnemonic_from_data_indexes_p(const uint8_t *data, int len, uint16_t mnemo[24])
+{
 	if (len % 4 || len < 16 || len > 32) {
-		return 0;
+		return false;
 	}
 
 	uint8_t bits[32 + 1];
@@ -120,7 +142,6 @@ const uint16_t *mnemonic_from_data_indexes(const uint8_t *data, int len)
 	memcpy(bits, data, len);
 
 	int mlen = len * 3 / 4;
-	static CONFIDENTIAL uint16_t mnemo[24];
 
 	int i, j, idx;
 	for (i = 0; i < mlen; i++) {
@@ -133,7 +154,7 @@ const uint16_t *mnemonic_from_data_indexes(const uint8_t *data, int len)
 	}
 	memzero(bits, sizeof(bits));
 
-	return mnemo;
+    return true;
 }
 
 int mnemonic_to_entropy(const char *mnemonic, uint8_t *entropy)
