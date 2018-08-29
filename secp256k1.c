@@ -82,7 +82,7 @@ const curve_info secp256k1_groestl_info = {
 const curve_info secp256k1_smart_info = {
 	.bip32_name = "Bitcoin seed",
 	.params = &secp256k1,
-	.hasher_base58 = HASHER_SHA3,
-	.hasher_sign = HASHER_SHA3,
-	.hasher_pubkey = HASHER_SHA3,
+	.hasher_base58 = HASHER_SHA3K,
+	.hasher_sign = HASHER_SHA2,
+	.hasher_pubkey = HASHER_SHA2_RIPEMD,
 };
