@@ -2586,19 +2586,19 @@ START_TEST(test_pbkdf2_hmac_sha256)
 	uint8_t k[40], s[40];
 
 	strcpy((char *)s, "salt");
-	pbkdf2_hmac_sha256((uint8_t *)"password", 8, s, 4, 1, k);
+	pbkdf2_hmac_sha256((uint8_t *)"password", 8, s, 4, 1, k, 32);
 	ck_assert_mem_eq(k, fromhex("120fb6cffcf8b32c43e7225256c4f837a86548c92ccc35480805987cb70be17b"), 32);
 
 	strcpy((char *)s, "salt");
-	pbkdf2_hmac_sha256((uint8_t *)"password", 8, s, 4, 2, k);
+	pbkdf2_hmac_sha256((uint8_t *)"password", 8, s, 4, 2, k, 32);
 	ck_assert_mem_eq(k, fromhex("ae4d0c95af6b46d32d0adff928f06dd02a303f8ef3c251dfd6e2d85a95474c43"), 32);
 
 	strcpy((char *)s, "salt");
-	pbkdf2_hmac_sha256((uint8_t *)"password", 8, s, 4, 4096, k);
+	pbkdf2_hmac_sha256((uint8_t *)"password", 8, s, 4, 4096, k, 32);
 	ck_assert_mem_eq(k, fromhex("c5e478d59288c841aa530db6845c4c8d962893a001ce4e11a4963873aa98134a"), 32);
 
 	strcpy((char *)s, "saltSALTsaltSALTsaltSALTsaltSALTsalt");
-	pbkdf2_hmac_sha256((uint8_t *)"passwordPASSWORDpassword", 3*8, s, 9*4, 4096, k);
+	pbkdf2_hmac_sha256((uint8_t *)"passwordPASSWORDpassword", 3*8, s, 9*4, 4096, k, 32);
 	ck_assert_mem_eq(k, fromhex("348c89dbcbd32b2f32d814b8116e84cf2b17347ebc1800181c4e2a1fb8dd53e1"), 32);
 }
 END_TEST
@@ -5063,21 +5063,14 @@ Suite *test_suite(void)
 
 #if USE_CARDANO
 	tc = tcase_create("bip32-cardano");
-	tcase_add_test(tc, test_bip32_cardano_v1_hdnode_vector_1);
-	tcase_add_test(tc, test_bip32_cardano_v1_hdnode_vector_2);
-	tcase_add_test(tc, test_bip32_cardano_v1_hdnode_vector_3);
-	tcase_add_test(tc, test_bip32_cardano_v1_hdnode_vector_4);
-	tcase_add_test(tc, test_bip32_cardano_v1_hdnode_vector_5);
-	tcase_add_test(tc, test_bip32_cardano_v1_hdnode_vector_6);
-	tcase_add_test(tc, test_bip32_cardano_v1_hdnode_vector_7);
 
-	tcase_add_test(tc, test_bip32_cardano_v2_hdnode_vector_1);
-	tcase_add_test(tc, test_bip32_cardano_v2_hdnode_vector_2);
-	tcase_add_test(tc, test_bip32_cardano_v2_hdnode_vector_3);
-	tcase_add_test(tc, test_bip32_cardano_v2_hdnode_vector_4);
-	tcase_add_test(tc, test_bip32_cardano_v2_hdnode_vector_5);
-	tcase_add_test(tc, test_bip32_cardano_v2_hdnode_vector_6);
-	tcase_add_test(tc, test_bip32_cardano_v2_hdnode_vector_7);
+	tcase_add_test(tc, test_bip32_cardano_hdnode_vector_1);
+	tcase_add_test(tc, test_bip32_cardano_hdnode_vector_2);
+	tcase_add_test(tc, test_bip32_cardano_hdnode_vector_3);
+	tcase_add_test(tc, test_bip32_cardano_hdnode_vector_4);
+	tcase_add_test(tc, test_bip32_cardano_hdnode_vector_5);
+	tcase_add_test(tc, test_bip32_cardano_hdnode_vector_6);
+	tcase_add_test(tc, test_bip32_cardano_hdnode_vector_7);
 
 	tcase_add_test(tc, test_ed25519_cardano_sign_vectors);
 	suite_add_tcase(s,tc);

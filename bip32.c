@@ -275,16 +275,7 @@ void scalar_add_no_overflow(const uint8_t * sk1, const uint8_t * sk2, uint8_t * 
     }
 }
 
-static void multiply8_v1(uint8_t *dst, uint8_t *src, int bytes)
-{
-	uint8_t prev_acc = 0;
-	for (int i = 0; i < bytes; i++) {
-		dst[i] = (src[i] << 3) + (prev_acc & 0x8);
-		prev_acc = src[i] >> 5;
-	}
-}
-
-static void multiply8_v2(uint8_t *dst, uint8_t *src, int bytes)
+static void multiply8(uint8_t *dst, uint8_t *src, int bytes)
 {
 	int i;
 	uint8_t prev_acc = 0;
@@ -295,17 +286,7 @@ static void multiply8_v2(uint8_t *dst, uint8_t *src, int bytes)
 	dst[bytes] = src[bytes-1] >> 5;
 }
 
-static void add_256bits_v1(uint8_t *dst, uint8_t *src1, uint8_t *src2)
-{
-	for (int i = 0; i < 32; i++) {
-		uint8_t a = src1[i];
-		uint8_t b = src2[i];
-		uint16_t r = a + b;
-		dst[i] = r & 0xff;
-	}
-}
-
-static void add_256bits_v2(uint8_t *dst, uint8_t *src1, uint8_t *src2)
+static void add_256bits(uint8_t *dst, uint8_t *src1, uint8_t *src2)
 {
 	int i; uint8_t carry = 0;
 	for (i = 0; i < 32; i++) {
@@ -317,52 +298,7 @@ static void add_256bits_v2(uint8_t *dst, uint8_t *src1, uint8_t *src2)
 	}
 }
 
-static int ed25519_scalar_add(const uint8_t *sk1, const uint8_t *sk2, uint8_t *res)
-{
-	bignum256modm s1, s2;
-	expand256_modm(s1, sk1, 32);
-	expand256_modm(s2, sk2, 32);
-	add256_modm(s1, s1, s2);
-	contract256_modm(res, s1);
-	return 0;
-}
-
-static void add_left(uint8_t * res_key, uint8_t *z, uint8_t * priv_key, int scheme)
-{
-	static CONFIDENTIAL uint8_t zl8[32];
-
-	memset(zl8, 0, 32);
-	switch (scheme) {
-	case 1:
-		/* get 8 * Zl */
-		multiply8_v1(zl8, z, 32);
-
-		/* Kl = 8*Zl + parent(K)l */
-		ed25519_scalar_add(zl8, priv_key, res_key);
-		break;
-	case 2:
-		/* get 8 * Zl */
-		multiply8_v2(zl8, z, 28);
-		/* Kl = 8*Zl + parent(K)l */
-		scalar_add_no_overflow(zl8, priv_key, res_key);
-		break;
-	}
-}
-
-static void add_right(uint8_t * res_key, uint8_t *z, uint8_t * priv_key, int scheme)
-{
-	switch (scheme) {
-	case 1:
-		add_256bits_v1(res_key + 32, z+32, priv_key+32);
-		break;
-	case 2:
-		add_256bits_v2(res_key + 32, z+32, priv_key+32);
-		break;
-	}
-}
-
-
-int hdnode_private_ckd_cardano(HDNode *inout, uint32_t index, uint32_t scheme)
+int hdnode_private_ckd_cardano(HDNode *inout, uint32_t index)
 {
 	// checks for hardened/non-hardened derivation, keysize 32 means we are dealing with public key and thus non-h, keysize 64 is for private key
 	int keysize = 32;
@@ -375,13 +311,7 @@ int hdnode_private_ckd_cardano(HDNode *inout, uint32_t index, uint32_t scheme)
 	static CONFIDENTIAL uint8_t priv_key[64];
 	static CONFIDENTIAL uint8_t res_key[64];
 
-	if (scheme == 1) {
-		write_be(data + keysize + 1, index);
-	} else if (scheme == 2) {
-		write_le(data + keysize + 1, index);
-	} else {
-		return 0;
-	}
+	write_le(data + keysize + 1, index);
 
 	memcpy(priv_key, inout->private_key, 32);
 	memcpy(priv_key + 32, inout->private_key_extension, 32);
@@ -401,10 +331,16 @@ int hdnode_private_ckd_cardano(HDNode *inout, uint32_t index, uint32_t scheme)
 	hmac_sha512_Update(&ctx, data, 1 + keysize + 4);
 	hmac_sha512_Final(&ctx, z);
 
-	add_left(res_key, z, priv_key, scheme);
+	static CONFIDENTIAL uint8_t zl8[32];
+	memset(zl8, 0, 32);
+
+	/* get 8 * Zl */
+	multiply8(zl8, z, 28);
+	/* Kl = 8*Zl + parent(K)l */
+	scalar_add_no_overflow(zl8, priv_key, res_key);
 
 	/* Kr = Zr + parent(K)r */
-	add_right(res_key, z, priv_key, scheme);
+	add_256bits(res_key + 32, z+32, priv_key+32);
 
 	memcpy(inout->private_key, res_key, 32);
 	memcpy(inout->private_key_extension, res_key + 32, 32);
@@ -431,100 +367,7 @@ int hdnode_private_ckd_cardano(HDNode *inout, uint32_t index, uint32_t scheme)
 	return 1;
 }
 
-int hdnode_from_seed_cardano_v1(uint8_t *seed, int seed_len, HDNode *out) {
-	uint8_t hash[32];
-	uint8_t cbor[32+2];
-
-	if (seed_len < 24) {
-		// cbor encodes length directly into first byte if its smaller than 24
-		seed[1] = 64 | seed_len; 
-		blake2b(seed + 1, seed_len + 1, hash, 32);
-	} else {
-		seed[0] = 88;
-		seed[1] = seed_len;
-		blake2b(seed, seed_len + 2, hash, 32);
-	}
-
-	cbor[0] = 88; // 64 means its byte array, 24 means its length has 8 bits
-	cbor[1] = 32; // length of the byte array
-	memcpy(cbor + 2, hash, 32);
-	uint8_t salt[21];
-	memcpy(salt, "Root Seed Chain ", 16);
-	uint8_t hmac[64];
-	uint8_t secret[64];
-	uint8_t public[32];
-	uint8_t chain_code[32];
-	int failed = 1;
-	memset(out, 0, sizeof(HDNode));
-	out->depth = 0;
-	out->child_num = 0;
-	out->curve = get_curve_by_name(ED25519_CARDANO_NAME);
-
-	int saltlen;
-	static CONFIDENTIAL HMAC_SHA512_CTX ctx;
-	for (int i = 1; i <= 1000; i++){
-		hmac_sha512_Init(&ctx, cbor, 34);
-		if (i < 10) {
-			salt[16] = '0' + (i);
-			saltlen = 16 + 1;
-		} else if (i < 100) {
-			salt[16] = '0' + (i / 10);
-			salt[17] = '0' + (i % 10);
-			saltlen = 16 + 2;
-		} else if (i < 1000) {
-			salt[16] = '0' + (i / 100);
-			salt[17] = '0' + ((i / 10) % 10);
-			salt[18] = '0' + (i % 10);
-			saltlen = 16 + 3;
-		} else {
-			salt[16] = '0' + (i / 1000);
-			salt[17] = '0' + ((i / 100) % 10);
-			salt[18] = '0' + ((i / 10) % 10);
-			salt[19] = '0' + (i % 10);
-			saltlen = 16 + 4;
-		}
-		hmac_sha512_Update(&ctx, salt, saltlen);
-		hmac_sha512_Final(&ctx, hmac);
-		ed25519_publickey(hmac, public);
-		sha512_Raw(hmac, 32, secret);
-		secret[0] &= 248;
-		secret[31] &= 127;
-		secret[31] |= 64;
-		if (secret[31] & 0x20) {
-			continue;
-		}
-		memcpy(chain_code, hmac + 32, 32);
-		failed = 0;
-		break;
-	}
-
-	memzero(hash, sizeof(hash));
-	memzero(cbor, sizeof(cbor));
-	memzero(salt, sizeof(salt));
-
-	if (failed) {
-		memzero(seed, sizeof(seed));
-		memzero(secret, sizeof(secret));
-		memzero(chain_code, sizeof(chain_code));
-		memzero(hmac, sizeof(hmac));
-		return 0;
-	}
-
-	memcpy(out->private_key, secret, 32);
-	memcpy(out->private_key_extension, secret + 32, 32);
-
-	memcpy(out->chain_code, chain_code, 32);
-	out->public_key[0] = 1;
-	memcpy(out->public_key + 1, public, 32);
-	memzero(seed, sizeof(seed));
-	memzero(secret, sizeof(secret));
-	memzero(chain_code, sizeof(chain_code));
-	memzero(hmac, sizeof(hmac));
-
-	return 1;
-}
-
-int hdnode_from_seed_cardano_v2(uint8_t *pass, int pass_len, uint8_t *seed, int seed_len, HDNode *out) {
+int hdnode_from_seed_cardano(uint8_t *pass, int pass_len, uint8_t *seed, int seed_len, HDNode *out) {
 	uint8_t secret[96];
 	pbkdf2_hmac_sha512(pass, pass_len, seed, seed_len, 4096, secret, 96);
 	

@@ -29,10 +29,9 @@
 
 #define CEILING_POS(X) ((X-(uint32_t)(X)) > 0 ? (uint32_t)(X+1) : (uint32_t)(X))
 
-void pbkdf2_hmac_sha256_Init(PBKDF2_HMAC_SHA256_CTX *pctx, const uint8_t *pass, int passlen, const uint8_t *salt, int saltlen)
+void pbkdf2_hmac_sha256_Init(PBKDF2_HMAC_SHA256_CTX *pctx, const uint8_t *pass, int passlen, const uint8_t *salt, int saltlen, uint32_t blocknr)
 {
 	SHA256_CTX ctx;
-	uint32_t blocknr = 1;
 #if BYTE_ORDER == LITTLE_ENDIAN
 	REVERSE32(blocknr, blocknr);
 #endif
@@ -80,12 +79,29 @@ void pbkdf2_hmac_sha256_Final(PBKDF2_HMAC_SHA256_CTX *pctx, uint8_t *key)
 	memzero(pctx, sizeof(PBKDF2_HMAC_SHA256_CTX));
 }
 
-void pbkdf2_hmac_sha256(const uint8_t *pass, int passlen, const uint8_t *salt, int saltlen, uint32_t iterations, uint8_t *key)
+void pbkdf2_hmac_sha256(const uint8_t *pass, int passlen, const uint8_t *salt, int saltlen, uint32_t iterations, uint8_t *key, int keylen)
 {
-	PBKDF2_HMAC_SHA256_CTX pctx;
-	pbkdf2_hmac_sha256_Init(&pctx, pass, passlen, salt, saltlen);
-	pbkdf2_hmac_sha256_Update(&pctx, iterations);
-	pbkdf2_hmac_sha256_Final(&pctx, key);
+	uint32_t blocks_count = (uint32_t) CEILING_POS((float) keylen / SHA256_DIGEST_LENGTH);
+
+	int unfinished_key_size = keylen;
+	for (uint32_t blocknr = 1; blocknr <= blocks_count; blocknr++) {
+		PBKDF2_HMAC_SHA256_CTX pctx;
+		pbkdf2_hmac_sha256_Init(&pctx, pass, passlen, salt, saltlen, blocknr);
+		pbkdf2_hmac_sha256_Update(&pctx, iterations);
+
+		unsigned int key_offset = (blocknr - 1) * SHA256_DIGEST_LENGTH;
+		uint8_t diggest[SHA256_DIGEST_LENGTH];
+
+		pbkdf2_hmac_sha256_Final(&pctx, diggest);
+
+		if (unfinished_key_size > SHA256_DIGEST_LENGTH) {
+			memcpy(key + key_offset, diggest, SHA256_DIGEST_LENGTH);
+			unfinished_key_size -= SHA256_DIGEST_LENGTH;
+		} else {
+			memcpy(key + key_offset, diggest, unfinished_key_size);
+			unfinished_key_size = 0;
+		}
+	}
 }
 
 void pbkdf2_hmac_sha512_Init(PBKDF2_HMAC_SHA512_CTX *pctx, const uint8_t *pass, int passlen, const uint8_t *salt, int saltlen, uint32_t blocknr)
