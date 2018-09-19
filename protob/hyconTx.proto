@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+message HyconTxs {
+  repeated HyconTx txs =1;
+}
+
+message HyconTx {
+  // Consensus Critical
+  bytes from = 1; //Address
+  bytes to = 2; //Address
+  uint64 amount = 3;
+  uint64 fee = 4;
+  uint32 nonce = 5;
+  bytes signature = 6;
+  uint32 recovery = 7;
+}

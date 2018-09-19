@@ -33,7 +33,9 @@ CFLAGS += -DUSE_KECCAK=1
 CFLAGS += -DUSE_MONERO=1
 CFLAGS += -DUSE_NEM=1
 CFLAGS += -DUSE_CARDANO=1
+CFLAGS += -DUSE_HYCON=1
 CFLAGS += $(shell pkg-config --cflags openssl)
+CFLAGS += $(shell pkg-config --cflags protobuf)
 
 # disable certain optimizations and features when small footprint is required
 ifdef SMALL
@@ -63,11 +65,14 @@ SRCS  += rc4.c
 SRCS  += nem.c
 SRCS  += segwit_addr.c cash_addr.c
 SRCS  += memzero.c
+SRCS  += protob/hyconTx.pb-c.c
 
 OBJS   = $(SRCS:.c=.o)
 
 TESTLIBS = $(shell pkg-config --libs check) -lpthread -lm
 TESTSSLLIBS = $(shell pkg-config --libs openssl)
+PROTOLIBS = -L/usr/local/lib -lprotobuf-c
+CRYPTOLIBS = -lcrypto
 
 all: tools tests
 
@@ -79,30 +84,30 @@ tests: tests/test_check tests/test_openssl tests/test_speed tests/libtrezor-cryp
 tests/aestst: aes/aestst.o aes/aescrypt.o aes/aeskey.o aes/aestab.o
 	$(CC) $^ -o $@
 
-tests/test_check.o: tests/test_check_cardano.h tests/test_check_monero.h tests/test_check_cashaddr.h tests/test_check_segwit.h
+tests/test_check.o: tests/test_check_cardano.h tests/test_check_monero.h tests/test_check_cashaddr.h tests/test_check_segwit.h tests/test_check_hycon.h
 
 tests/test_check: tests/test_check.o $(OBJS)
-	$(CC) tests/test_check.o $(OBJS) $(TESTLIBS) -o tests/test_check
+	$(CC) tests/test_check.o $(OBJS) $(TESTLIBS) $(PROTOLIBS) $(CRYPTOLIBS) -o tests/test_check
 
 tests/test_speed: tests/test_speed.o $(OBJS)
-	$(CC) tests/test_speed.o $(OBJS) -o tests/test_speed
+	$(CC) tests/test_speed.o $(OBJS) $(PROTOLIBS) $(CRYPTOLIBS) -o tests/test_speed
 
 tests/test_openssl: tests/test_openssl.o $(OBJS)
-	$(CC) tests/test_openssl.o $(OBJS) $(TESTSSLLIBS) -o tests/test_openssl
+	$(CC) tests/test_openssl.o $(OBJS) $(TESTSSLLIBS) ${PROTOLIBS} -o tests/test_openssl
 
 tests/libtrezor-crypto.so: $(SRCS)
 	$(CC) $(CFLAGS) -DAES_128 -DAES_192 -fPIC -shared $(SRCS) -o tests/libtrezor-crypto.so
 
-tools: tools/xpubaddrgen tools/mktable tools/bip39bruteforce
+tools: tools/xpubaddrgen tools/mktable tools/bip39bruteforce 
 
 tools/xpubaddrgen: tools/xpubaddrgen.o $(OBJS)
-	$(CC) tools/xpubaddrgen.o $(OBJS) -o tools/xpubaddrgen
+	$(CC) tools/xpubaddrgen.o $(OBJS) $(PROTOLIBS) $(CRYPTOLIBS) -o tools/xpubaddrgen
 
 tools/mktable: tools/mktable.o $(OBJS)
-	$(CC) tools/mktable.o $(OBJS) -o tools/mktable
+	$(CC) tools/mktable.o $(OBJS) $(PROTOLIBS) $(CRYPTOLIBS) -o tools/mktable
 
 tools/bip39bruteforce: tools/bip39bruteforce.o $(OBJS)
-	$(CC) tools/bip39bruteforce.o $(OBJS) -o tools/bip39bruteforce
+	$(CC) tools/bip39bruteforce.o $(OBJS) $(PROTOLIBS) $(CRYPTOLIBS) -o tools/bip39bruteforce
 
 clean:
 	rm -f *.o aes/*.o chacha20poly1305/*.o ed25519-donna/*.o
