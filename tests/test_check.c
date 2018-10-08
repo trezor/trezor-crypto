@@ -4812,6 +4812,12 @@ END_TEST
 #include "test_check_monero.h"
 #endif
 
+#if USE_HYCON
+#include "protob/hyconTx.pb-c.h"
+#include <openssl/aes.h>
+#include "test_check_hycon.h"
+#endif
+
 // define test suite and cases
 Suite *test_suite(void)
 {
@@ -5116,6 +5122,25 @@ Suite *test_suite(void)
 	tcase_add_test(tc, test_xmr_gen_range_sig);
 	suite_add_tcase(s, tc);
 #endif
+
+#if USE_HYCON
+	tc = tcase_create("bip32-hycon");
+	tcase_add_test(tc, test_bip32_hycon_hdnode);
+	tcase_add_test(tc, test_hycon_sign);
+	tcase_add_test(tc, test_bip32_hycon_address_checksum);
+	tcase_add_test(tc, test_bip32_hycon_normal_address);
+	tcase_add_test(tc, test_bip32_hycon_bip39_address);
+	tcase_add_test(tc, test_hycon_address_to_address_arr);
+	tcase_add_test(tc, test_hycon_sign_tx);
+	tcase_add_test(tc, test_hycon_sign_tx_with_bip39);
+	tcase_add_test(tc, test_hycon_decrypt_private_key);
+	tcase_add_test(tc, test_hycon_decrypt_private_key_with_password);
+	tcase_add_test(tc, test_hycon_encrypt_and_decrypt);
+	tcase_add_test(tc, test_hycon_encrypt_and_decrypt_with_bip39);
+	tcase_add_test(tc, test_hycon_encrypt_and_decrypt_with_password);
+	suite_add_tcase(s, tc);
+#endif
+
 	return s;
 }
 

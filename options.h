@@ -86,6 +86,10 @@
 #define USE_CARDANO 0
 #endif
 
+#ifndef USE_HYCON
+#define USE_HYCON 0
+#endif
+
 // support Keccak hashing
 #ifndef USE_KECCAK
 #define USE_KECCAK 1

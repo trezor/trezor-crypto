@@ -49,6 +49,15 @@
 #include "pbkdf2.h"
 #endif
 #include "memzero.h"
+#if USE_HYCON
+#include <stdio.h>
+#include <openssl/aes.h>
+#include "base58.h"
+#include "blake2b.h"
+#include "address.h"
+#include "rand.h"
+#include "protob/hyconTx.pb-c.h"
+#endif
 
 const curve_info ed25519_info = {
 	.bip32_name = "ed25519 seed",
@@ -184,6 +193,23 @@ int hdnode_from_seed(const uint8_t *seed, int seed_len, const char* curve, HDNod
 	memzero(I, sizeof(I));
 	return 1;
 }
+
+#if USE_HYCON
+int hdnode_from_seed_hycon(const uint8_t *seed, int seed_len, HDNode *out) 
+{
+	memset(out, 0, sizeof(HDNode));
+	hdnode_from_seed(seed, seed_len, SECP256K1_NAME, out);
+
+	hdnode_private_ckd_prime(out, 44);
+    hdnode_private_ckd_prime(out, 1397);
+    hdnode_private_ckd_prime(out, 0);
+    hdnode_private_ckd(out, 0);
+    hdnode_private_ckd(out, 0);
+    hdnode_fill_public_key(out);
+
+	return 1;
+}
+#endif
 
 uint32_t hdnode_fingerprint(HDNode *node)
 {
@@ -545,6 +571,49 @@ void hdnode_get_address(HDNode *node, uint32_t version, char *addr, int addrsize
 	ecdsa_get_address(node->public_key, version, node->curve->hasher_pubkey, node->curve->hasher_base58, addr, addrsize);
 }
 
+#if USE_HYCON
+
+int hdnode_get_hycon_address(HDNode *node, char *address, const size_t address_len) 
+{
+	if(node == NULL) 
+	{
+		return 0;
+	}
+
+	size_t pubick_key_len = 33;
+	size_t hash_len = 32;
+	uint8_t hash[hash_len];
+	memset(hash, 0, hash_len);
+
+	blake2b(node->public_key, pubick_key_len, hash, hash_len);
+
+	size_t address_arr_len = 20;
+	uint8_t address_arr[address_arr_len];
+	memset(address_arr, 0, address_arr_len);
+	size_t start_idx = hash_len - address_arr_len;
+	for(size_t i=start_idx; i<hash_len; ++i) {
+		address_arr[i - start_idx] = hash[i];
+	}
+
+	size_t address_str_len = 29;
+	char address_str[address_str_len];
+	memset(address_str, 0, address_arr_len);
+	b58enc(address_str, &address_str_len, address_arr, address_arr_len);
+
+	size_t checksum_len = 5;
+	char checksum[checksum_len];
+	memset(checksum, 0, checksum_len);
+	hycon_address_checksum(address_arr, address_arr_len, checksum, checksum_len);
+
+	memset(address, 0, address_len);
+	address[0] = 'H';
+	memcpy(address + 1, address_str, address_str_len - 1);
+	memcpy(address + address_str_len, checksum, checksum_len - 1);
+
+	return 1;
+}
+#endif
+
 void hdnode_fill_public_key(HDNode *node)
 {
 	if (node->public_key[0] != 0)
@@ -714,6 +783,150 @@ int hdnode_sign(HDNode *node, const uint8_t *msg, uint32_t msg_len, HasherType h
 		return 0;
 	}
 }
+
+#if USE_HYCON
+int hdnode_hycon_sign_tx(HDNode *node, const uint8_t* txhash, uint8_t* signature, uint8_t* recovery) 
+{
+	if(node == NULL) 
+	{
+		return 0;
+	}
+
+	const ecdsa_curve *curve = &secp256k1;
+    ecdsa_sign_digest(curve, node->private_key, txhash, signature, recovery, NULL);
+
+	return 1;
+}
+
+#define FROMHEX_MAXLEN 512
+
+const uint8_t *fromHex(const char *str)
+{
+	static uint8_t buf[FROMHEX_MAXLEN];
+	size_t len = strlen(str) / 2;
+	if (len > FROMHEX_MAXLEN) len = FROMHEX_MAXLEN;
+	for (size_t i = 0; i < len; i++) {
+		uint8_t c = 0;
+		if (str[i * 2] >= '0' && str[i*2] <= '9') c += (str[i * 2] - '0') << 4;
+		if ((str[i * 2] & ~0x20) >= 'A' && (str[i*2] & ~0x20) <= 'F') c += (10 + (str[i * 2] & ~0x20) - 'A') << 4;
+		if (str[i * 2 + 1] >= '0' && str[i * 2 + 1] <= '9') c += (str[i * 2 + 1] - '0');
+		if ((str[i * 2 + 1] & ~0x20) >= 'A' && (str[i * 2 + 1] & ~0x20) <= 'F') c += (10 + (str[i * 2 + 1] & ~0x20) - 'A');
+		buf[i] = c;
+	}
+	return buf;
+}
+
+int hdnode_hycon_encode_tx(const char* from_address_str, const char* to_address_str, const uint32_t nonce, const uint64_t amount, const uint64_t fee, uint8_t* txhash, size_t hash_len)
+{
+	size_t address_arr_len = 20;
+	uint8_t from_address_arr[address_arr_len];
+	hycon_address_to_address_arr(from_address_str, from_address_arr, address_arr_len);
+	size_t checksum_len = 4;
+	char checksum[checksum_len+1];
+	hycon_address_checksum(from_address_arr, address_arr_len, checksum, checksum_len);
+    if(strncmp(checksum, from_address_str + sizeof(from_address_str) - checksum_len, checksum_len) == 0)
+	{
+		return 0;
+	}
+	ProtobufCBinaryData from_address;
+    from_address.len = address_arr_len;
+    from_address.data = from_address_arr;
+
+	uint8_t to_address_arr[address_arr_len];
+	hycon_address_to_address_arr(to_address_str, to_address_arr, address_arr_len);
+	hycon_address_checksum(to_address_arr, address_arr_len, checksum, checksum_len);
+    if(strncmp(checksum, to_address_str + sizeof(to_address_str) - checksum_len, checksum_len) == 0) 
+	{
+		return 0;
+	}
+	ProtobufCBinaryData to_address;
+    to_address.len = address_arr_len;
+    to_address.data = to_address_arr;
+
+	HyconTx tx = HYCON_TX__INIT;
+    tx.to =  to_address;
+    tx.from = from_address;
+    tx.nonce = nonce;
+    tx.amount = amount;
+    tx.fee = fee;
+
+	uint8_t* protoTx;
+	size_t protoTx_len = hycon_tx__get_packed_size(&tx);
+	protoTx = malloc(protoTx_len);
+	hycon_tx__pack(&tx, protoTx);
+
+	memset(txhash, 0, hash_len);
+	blake2b(protoTx, protoTx_len, txhash, hash_len);
+
+	free(protoTx);
+
+	return 1;
+}
+
+int hdnode_hycon_hash_password(const char* password, uint8_t* password_hash) 
+{
+	size_t password_len = strlen(password);
+	size_t password_hash_len = 32;
+	memset(password_hash, 0, password_hash_len);
+
+	blake2b((uint8_t*)password, password_len, password_hash, password_hash_len);
+
+	return 1;
+}
+int hdnode_hycon_encrypt(HDNode *node, const uint8_t* password, uint8_t* iv, const size_t iv_len, uint8_t* data, const size_t data_len)
+{
+	if(node == NULL) 
+	{
+		return 0;
+	}
+
+	memset(iv, 0, iv_len);
+	random_buffer(iv, iv_len);
+
+	uint8_t iv_enc[iv_len];
+	memset(iv_enc, 0, iv_len);
+	memcpy(iv_enc, iv, iv_len);
+
+	size_t hash_len = 32;
+
+	size_t private_key_char_len = 64;
+	char private_key_char[private_key_char_len];
+	memset(private_key_char, 0, private_key_char_len);
+
+	for(size_t i=0; i<hash_len; ++i) {
+		sprintf(private_key_char + (i * 2), "%02x", (node->private_key)[i]);
+	}
+
+	AES_KEY aes_key;
+	AES_set_encrypt_key(password, 256, &aes_key);
+
+	memset(data, 0, data_len);
+	AES_cbc_encrypt((unsigned char*)private_key_char, data, private_key_char_len, &aes_key, iv_enc, AES_ENCRYPT);
+
+	return 1;
+}
+int hdnode_hycon_decrypt(uint8_t* iv, const uint8_t* data, const size_t data_len, const uint8_t* password, uint8_t* private_key)
+{
+	AES_KEY aes_key;
+    AES_set_decrypt_key(password, 256, &aes_key);
+    size_t decrypt_result_length = 65;
+    unsigned char decrypt_result[decrypt_result_length];
+    size_t private_key_char_length = 65;
+    char private_key_char[private_key_char_length];
+    memset(decrypt_result, 0, decrypt_result_length);
+    memset(private_key_char, 0, private_key_char_length);
+
+    AES_cbc_encrypt(data, decrypt_result, data_len, &aes_key, iv, AES_DECRYPT);
+    decrypt_result[64] = 0;
+    sprintf(private_key_char, "%s", decrypt_result);
+
+    size_t private_key_length = 32;
+    memset(private_key, 0, private_key_length);
+    memcpy(private_key, fromHex(private_key_char), private_key_length);
+	
+	return 1;
+}
+#endif
 
 int hdnode_sign_digest(HDNode *node, const uint8_t *digest, uint8_t *sig, uint8_t *pby, int (*is_canonical)(uint8_t by, uint8_t sig[64]))
 {
