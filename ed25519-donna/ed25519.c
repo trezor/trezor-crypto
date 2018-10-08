@@ -48,10 +48,28 @@ ED25519_FN(ed25519_publickey) (const ed25519_secret_key sk, ed25519_public_key p
 
 	/* A = aB */
 	ed25519_extsk(extsk, sk);
+
 	expand256_modm(a, extsk, 32);
 	ge25519_scalarmult_base_niels(&A, ge25519_niels_base_multiples, a);
 	ge25519_pack(pk, &A);
 }
+
+#if USE_CARDANO
+void
+ED25519_FN(ed25519_publickey_ext) (const ed25519_secret_key sk, const ed25519_secret_key skext, ed25519_public_key pk) {
+	bignum256modm a;
+	ge25519 ALIGN(16) A;
+	hash_512bits extsk;
+
+	/* we don't stretch the key through hashing first since its already 64 bytes */
+
+	memcpy(extsk, sk, 32);
+	memcpy(extsk+32, skext, 32);
+	expand256_modm(a, extsk, 32);
+	ge25519_scalarmult_base_niels(&A, ge25519_niels_base_multiples, a);
+	ge25519_pack(pk, &A);
+}
+#endif
 
 void
 ED25519_FN(ed25519_cosi_sign) (const unsigned char *m, size_t mlen, const ed25519_secret_key sk, const ed25519_secret_key nonce, const ed25519_public_key R, const ed25519_public_key pk, ed25519_cosi_signature sig) {
@@ -88,6 +106,7 @@ ED25519_FN(ed25519_sign) (const unsigned char *m, size_t mlen, const ed25519_sec
 
 	ed25519_extsk(extsk, sk);
 
+
 	/* r = H(aExt[32..64], m) */
 	ed25519_hash_init(&ctx);
 	ed25519_hash_update(&ctx, extsk + 32, 32);
@@ -114,6 +133,47 @@ ED25519_FN(ed25519_sign) (const unsigned char *m, size_t mlen, const ed25519_sec
 	contract256_modm(RS + 32, S);
 }
 
+#if USE_CARDANO
+void
+ED25519_FN(ed25519_sign_ext) (const unsigned char *m, size_t mlen, const ed25519_secret_key sk, const ed25519_secret_key skext, const ed25519_public_key pk, ed25519_signature RS) {
+	ed25519_hash_context ctx;
+	bignum256modm r, S, a;
+	ge25519 ALIGN(16) R;
+	hash_512bits extsk, hashr, hram;
+
+	/* we don't stretch the key through hashing first since its already 64 bytes */
+	
+	memcpy(extsk, sk, 32);
+	memcpy(extsk+32, skext, 32);
+
+
+	/* r = H(aExt[32..64], m) */
+	ed25519_hash_init(&ctx);
+	ed25519_hash_update(&ctx, extsk + 32, 32);
+	ed25519_hash_update(&ctx, m, mlen);
+	ed25519_hash_final(&ctx, hashr);
+	expand256_modm(r, hashr, 64);
+
+	/* R = rB */
+	ge25519_scalarmult_base_niels(&R, ge25519_niels_base_multiples, r);
+	ge25519_pack(RS, &R);
+
+	/* S = H(R,A,m).. */
+	ed25519_hram(hram, RS, pk, m, mlen);
+	expand256_modm(S, hram, 64);
+
+	/* S = H(R,A,m)a */
+	expand256_modm(a, extsk, 32);
+	mul256_modm(S, S, a);
+
+	/* S = (r + H(R,A,m)a) */
+	add256_modm(S, S, r);
+
+	/* S = (r + H(R,A,m)a) mod L */
+	contract256_modm(RS + 32, S);
+}
+#endif
+
 int
 ED25519_FN(ed25519_sign_open) (const unsigned char *m, size_t mlen, const ed25519_public_key pk, const ed25519_signature RS) {
 	ge25519 ALIGN(16) R, A;
@@ -129,7 +189,9 @@ ED25519_FN(ed25519_sign_open) (const unsigned char *m, size_t mlen, const ed2551
 	expand256_modm(hram, hash, 64);
 
 	/* S */
-	expand256_modm(S, RS + 32, 32);
+	expand_raw256_modm(S, RS + 32);
+	if (!is_reduced256_modm(S))
+	  return -1;
 
 	/* SB - H(R,A,m)A */
 	ge25519_double_scalarmult_vartime(&R, &A, hram, S);

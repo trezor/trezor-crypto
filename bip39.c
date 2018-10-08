@@ -136,15 +136,14 @@ const uint16_t *mnemonic_from_data_indexes(const uint8_t *data, int len)
 	return mnemo;
 }
 
-int mnemonic_check(const char *mnemonic)
+int mnemonic_to_entropy(const char *mnemonic, uint8_t *entropy)
 {
 	if (!mnemonic) {
 		return 0;
 	}
 
-	uint32_t i, n;
+	uint32_t i = 0, n = 0;
 
-	i = 0; n = 0;
 	while (mnemonic[i]) {
 		if (mnemonic[i] == ' ') {
 			n++;
@@ -152,17 +151,18 @@ int mnemonic_check(const char *mnemonic)
 		i++;
 	}
 	n++;
+
 	// check number of words
 	if (n != 12 && n != 18 && n != 24) {
 		return 0;
 	}
 
 	char current_word[10];
-	uint32_t j, k, ki, bi;
+	uint32_t j, k, ki, bi = 0;
 	uint8_t bits[32 + 1];
 
 	memzero(bits, sizeof(bits));
-	i = 0; bi = 0;
+	i = 0;
 	while (mnemonic[i]) {
 		j = 0;
 		while (mnemonic[i] != ' ' && mnemonic[i] != 0) {
@@ -173,7 +173,9 @@ int mnemonic_check(const char *mnemonic)
 			i++; j++;
 		}
 		current_word[j] = 0;
-		if (mnemonic[i] != 0) i++;
+		if (mnemonic[i] != 0) {
+			i++;
+		}
 		k = 0;
 		for (;;) {
 			if (!wordlist[k]) { // word not found
@@ -194,16 +196,27 @@ int mnemonic_check(const char *mnemonic)
 	if (bi != n * 11) {
 		return 0;
 	}
-	bits[32] = bits[n * 4 / 3];
-	sha256_Raw(bits, n * 4 / 3, bits);
-	if (n == 12) {
-		return (bits[0] & 0xF0) == (bits[32] & 0xF0); // compare first 4 bits
-	} else
-	if (n == 18) {
-		return (bits[0] & 0xFC) == (bits[32] & 0xFC); // compare first 6 bits
-	} else
-	if (n == 24) {
-		return bits[0] == bits[32]; // compare 8 bits
+	memcpy(entropy, bits, sizeof(bits));
+	return n * 11;
+}
+
+int mnemonic_check(const char *mnemonic)
+{
+	uint8_t bits[32 + 1];
+	int seed_len = mnemonic_to_entropy(mnemonic, bits);
+	if (seed_len != (12 * 11) && seed_len != (18 * 11) && seed_len != (24 * 11)) {
+		return 0;
+	}
+	int words = seed_len / 11;
+
+	uint8_t checksum = bits[words * 4 / 3];
+	sha256_Raw(bits, words * 4 / 3, bits);
+	if (words == 12) {
+		return (bits[0] & 0xF0) == (checksum & 0xF0); // compare first 4 bits
+	} else if (words == 18) {
+		return (bits[0] & 0xFC) == (checksum & 0xFC); // compare first 6 bits
+	} else if (words == 24) {
+		return bits[0] == checksum; // compare 8 bits
 	}
 	return 0;
 }
@@ -230,7 +243,7 @@ void mnemonic_to_seed(const char *mnemonic, const char *passphrase, uint8_t seed
 	memcpy(salt, "mnemonic", 8);
 	memcpy(salt + 8, passphrase, passphraselen);
 	static CONFIDENTIAL PBKDF2_HMAC_SHA512_CTX pctx;
-	pbkdf2_hmac_sha512_Init(&pctx, (const uint8_t *)mnemonic, strlen(mnemonic), salt, passphraselen + 8);
+	pbkdf2_hmac_sha512_Init(&pctx, (const uint8_t *)mnemonic, strlen(mnemonic), salt, passphraselen + 8, 1);
 	if (progress_callback) {
 		progress_callback(0, BIP39_PBKDF2_ROUNDS);
 	}
