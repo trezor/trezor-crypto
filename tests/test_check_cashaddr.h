@@ -44,9 +44,9 @@ START_TEST(test_cashaddr)
 {
 	size_t i;
 	for (i = 0; i < sizeof(valid_cashchecksum) / sizeof(valid_cashchecksum[0]); ++i) {
-		uint8_t data[82];
+		uint8_t data[104]; // MAX_BASE32_SIZE
 		char rebuild[92];
-		char hrp[84];
+		char hrp[21]; // MAX_HRP_SIZE + 1
 		size_t data_len;
 		int res = cash_decode(hrp, data, &data_len, valid_cashchecksum[i]);
 		ck_assert_int_eq(res, 1);
