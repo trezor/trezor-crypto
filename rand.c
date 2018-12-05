@@ -32,20 +32,23 @@
 // It's included only to make the library testable.
 // The message above tries to prevent any accidental use outside of the test environment.
 //
-// You are supposed to replace the random32() function with your own secure code.
+// You are supposed to replace the random8() and random32() function with your own secure code.
 // There is also a possibility to replace the random_buffer() function as it is defined as a weak symbol.
 
-#include <stdio.h>
-#include <time.h>
+uint8_t random8(void)
+{
+    static int seed = 0;
+    seed = (1103515245 * seed + 12345) & 0x7FFFFFFF;
+    return seed & 0xFF;
+}
 
 uint32_t random32(void)
 {
-	static int initialized = 0;
-	if (!initialized) {
-		srand((unsigned)time(NULL));
-		initialized = 1;
-	}
-	return ((rand() & 0xFF) | ((rand() & 0xFF) << 8) | ((rand() & 0xFF) << 16) | ((uint32_t) (rand() & 0xFF) << 24));
+    uint32_t r1 = random8();
+    uint32_t r2 = random8();
+    uint32_t r3 = random8();
+    uint32_t r4 = random8();
+    return ((r1 << 24) | (r2 << 16) | (r3 << 8) | r4);
 }
 
 #endif /* RAND_PLATFORM_INDEPENDENT */
