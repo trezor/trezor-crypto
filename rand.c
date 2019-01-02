@@ -35,11 +35,17 @@
 // You are supposed to replace the random8() and random32() function with your own secure code.
 // There is also a possibility to replace the random_buffer() function as it is defined as a weak symbol.
 
+static uint32_t seed = 0;
+
+void random_reseed(const uint32_t value)
+{
+	seed = value;
+}
+
 uint32_t random32(void)
 {
 	// Linear congruential generator from Numerical Recipes
 	// https://en.wikipedia.org/wiki/Linear_congruential_generator
-	static uint32_t seed = 0;
 	seed = 1664525 * seed + 1013904223;
 	return seed;
 }
