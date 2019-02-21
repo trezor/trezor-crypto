@@ -123,13 +123,13 @@
 
 #if (!defined(ECRYPT_UNKNOWN) && defined(ECRYPT_I8T_IS_BYTE))
 
-#define U8TO16_LITTLE(p) U16TO16_LITTLE(((u16*)(p))[0])
-#define U8TO32_LITTLE(p) U32TO32_LITTLE(((u32*)(p))[0])
-#define U8TO64_LITTLE(p) U64TO64_LITTLE(((u64*)(p))[0])
+#define U8TO16_LITTLE(p) U16TO16_LITTLE(((__attribute__((packed)) u16*)(p))[0])
+#define U8TO32_LITTLE(p) U32TO32_LITTLE(((__attribute__((packed)) u32*)(p))[0])
+#define U8TO64_LITTLE(p) U64TO64_LITTLE(((__attribute__((packed)) u64*)(p))[0])
 
-#define U8TO16_BIG(p) U16TO16_BIG(((u16*)(p))[0])
-#define U8TO32_BIG(p) U32TO32_BIG(((u32*)(p))[0])
-#define U8TO64_BIG(p) U64TO64_BIG(((u64*)(p))[0])
+#define U8TO16_BIG(p) U16TO16_BIG(((__attribute__((packed)) u16*)(p))[0])
+#define U8TO32_BIG(p) U32TO32_BIG(((__attribute__((packed)) u32*)(p))[0])
+#define U8TO64_BIG(p) U64TO64_BIG(((__attribute__((packed)) u64*)(p))[0])
 
 #define U16TO8_LITTLE(p, v) (((u16*)(p))[0] = U16TO16_LITTLE(v))
 #define U32TO8_LITTLE(p, v) (((u32*)(p))[0] = U32TO32_LITTLE(v))
