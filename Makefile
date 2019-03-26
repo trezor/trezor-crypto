@@ -93,7 +93,7 @@ tests/test_openssl: tests/test_openssl.o $(OBJS)
 tests/libtrezor-crypto.so: $(SRCS)
 	$(CC) $(CFLAGS) -DAES_128 -DAES_192 -fPIC -shared $(SRCS) -o tests/libtrezor-crypto.so
 
-tools: tools/xpubaddrgen tools/mktable tools/bip39bruteforce
+tools: tools/xpubaddrgen tools/mktable tools/bip39bruteforce tools/bip39_mnemonic
 
 tools/xpubaddrgen: tools/xpubaddrgen.o $(OBJS)
 	$(CC) tools/xpubaddrgen.o $(OBJS) -o tools/xpubaddrgen
@@ -104,7 +104,10 @@ tools/mktable: tools/mktable.o $(OBJS)
 tools/bip39bruteforce: tools/bip39bruteforce.o $(OBJS)
 	$(CC) tools/bip39bruteforce.o $(OBJS) -o tools/bip39bruteforce
 
+tools/bip39_mnemonic: tools/bip39_mnemonic.o $(OBJS)
+	$(CC) tools/bip39_mnemonic.o $(OBJS) -o tools/bip39_mnemonic -lsodium
+
 clean:
 	rm -f *.o aes/*.o chacha20poly1305/*.o ed25519-donna/*.o
 	rm -f tests/test_check tests/test_speed tests/test_openssl tests/libtrezor-crypto.so tests/aestst
-	rm -f tools/*.o tools/xpubaddrgen tools/mktable tools/bip39bruteforce
+	rm -f tools/*.o tools/xpubaddrgen tools/mktable tools/bip39bruteforce tools/bip39_mnemonic
