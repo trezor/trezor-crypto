@@ -1065,4 +1065,10 @@ void bn_print_raw(const bignum256 *a) {
     printf("0x%08x, ", a->val[i]);
   }
 }
+
+void bn_print_dec(const bignum256 *a) {
+    char buf[128];
+    bn_format(a, NULL, NULL, 0, 0, false, buf, sizeof(buf));
+    printf("%s\n", buf);
+}
 #endif

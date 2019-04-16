@@ -163,6 +163,7 @@ static inline size_t bn_format_uint64(uint64_t amount, const char *prefix,
 #if USE_BN_PRINT
 void bn_print(const bignum256 *a);
 void bn_print_raw(const bignum256 *a);
+void bn_print_dec(const bignum256 *a);
 #endif
 
 #endif
