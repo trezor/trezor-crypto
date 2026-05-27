@@ -1,44 +1,32 @@
 # trezor-crypto
 
-[![Build Status](https://travis-ci.org/trezor/trezor-crypto.svg?branch=master)](https://travis-ci.org/trezor/trezor-crypto) [![gitter](https://badges.gitter.im/trezor/community.svg)](https://gitter.im/trezor/community)
+> ⚠️ **This repository is archived and no longer maintained.**
+> The code has moved to the [trezor-firmware](https://github.com/trezor/trezor-firmware)
+> monorepo. Do not use the historical contents of this repository.
 
-Heavily optimized cryptography algorithms for embedded devices.
+## Where the code went
 
-These include:
-- AES/Rijndael encryption/decryption
-- Big Number (256 bit) Arithmetics
-- BIP32 Hierarchical Deterministic Wallets
-- BIP39 Mnemonic code
-- ECDSA signing/verifying (supports secp256k1 and nist256p1 curves,
-  uses RFC6979 for deterministic signatures)
-- ECDSA public key derivation
-- Base32 (RFC4648 and custom alphabets)
-- Base58 address representation
-- Ed25519 signing/verifying (also SHA3 and Keccak variants)
-- ECDH using secp256k1, nist256p1 and Curve25519
-- HMAC-SHA256 and HMAC-SHA512
-- PBKDF2
-- RIPEMD-160
-- SHA1
-- SHA2-256/SHA2-512
-- SHA3/Keccak
-- BLAKE2s/BLAKE2b
-- Chacha20-Poly1305
-- unit tests (using Check - check.sf.net; in test_check.c)
-- tests against OpenSSL (in test_openssl.c)
-- integrated Wycheproof tests
+The cryptographic library previously hosted here is now developed in the
+[`crypto/`](https://github.com/trezor/trezor-firmware/tree/main/crypto) directory
+of the trezor-firmware monorepo, where it is actively maintained alongside the
+rest of the Trezor firmware.
 
-Distibuted under MIT License.
+The source files have been removed from this repository. The last code state
+here is from 2019 and is significantly out of date — many bugs and security
+issues have been fixed in the monorepo since. The repository itself is kept
+in place so that existing Git submodule pins and old links continue to resolve,
+but **the code here must not be used**.
 
-## Some parts of the library come from external sources:
+## Reporting security issues
 
-- AES: https://github.com/BrianGladman/aes
-- Base58: https://github.com/luke-jr/libbase58
-- BLAKE2s/BLAKE2b: https://github.com/BLAKE2/BLAKE2
-- RIPEMD-160: https://github.com/ARMmbed/mbedtls
-- SHA1/SHA2: http://www.aarongifford.com/computers/sha.html
-- SHA3: https://github.com/rhash/RHash
-- Curve25519: https://github.com/agl/curve25519-donna
-- Ed25519: https://github.com/floodyberry/ed25519-donna
-- Chacha20: https://github.com/wg/c20p1305
-- Poly1305: https://github.com/floodyberry/poly1305-donna
+**Security reports against this repository are not accepted.** Vulnerabilities
+in the 2019-era code here are, with overwhelming likelihood, already fixed in
+the monorepo. If you believe you have found a vulnerability in the current
+Trezor cryptographic code, please report it against
+[trezor-firmware](https://github.com/trezor/trezor-firmware) following its
+[security policy](https://github.com/trezor/trezor-firmware/security/policy).
+
+## Migrating
+
+If you depend on this repository as a Git submodule or otherwise, please
+re-point your dependency at the `crypto/` subtree of trezor-firmware.
